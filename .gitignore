@@ -1,0 +1,14 @@
+# 备份与临时文件
+*.orig-*
+*.bak
+*.before-rollback
+*.tmoelike-bak
+*~
+.DS_Store
+
+# 开发中间产物
+.dev-archive/
+.patch/
+
+# 本项目私有临时目录
+tmp/

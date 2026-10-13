@@ -1,0 +1,27 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# proot / proot-distro 测试夹具：仅满足脚本的依赖检查与少量调用
+cmd="${0##*/}"
+case "$cmd" in
+    proot)
+        exit 0
+        ;;
+esac
+# proot-distro
+case "${1:-}" in
+    list)
+        if [ "${2:-}" = "--installed" ]; then
+            echo "[installed]"
+            for d in "${PREFIX}/var/lib/proot-distro/installed-rootfs"/*; do
+                [ -d "$d" ] && echo "  $(basename "$d")"
+            done
+            echo
+        else
+            echo "Supported distributions:"
+            echo "  ubuntu debian alpine"
+        fi
+        ;;
+    login) exit 0 ;;
+    install) exit 0 ;;
+    remove) exit 0 ;;
+    *) exit 0 ;;
+esac

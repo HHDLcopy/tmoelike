@@ -1,0 +1,163 @@
+#!/data/data/com.termux/files/usr/bin/python3
+"""极简 jq 兼容层：仅覆盖 tmoelike.sh 用到的查询/更新场景，用于沙箱端到端测试。
+
+支持：
+  jq -r '<path>' file                   取值（.containers | keys[], .containers[n][k] // empty,
+                                        to_entries[] 拼接, .containers[n] // {} 等）
+  jq empty file                         语法校验
+  jq --arg ... '<filter>' file > out    写回（set / del / slurpfile / rename）
+本实现是测试夹具，不替代真实 jq。
+"""
+import json
+import sys
+
+
+def load(path):
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def dump(obj, out):
+    with open(out, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+
+
+def main(argv):
+    args = argv[1:]
+    raw = False
+    named = {}
+    slurp = {}
+    filter_str = None
+    files = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == '-r':
+            raw = True
+        elif a == '--arg':
+            named[args[i + 1]] = args[i + 2]; i += 2
+        elif a == '--slurpfile':
+            slurp[args[i + 1]] = load(args[i + 2]); i += 2
+        elif a in ('-c', '-e', '-n'):
+            pass
+        elif a.startswith('-'):
+            pass
+        elif filter_str is None:
+            filter_str = a
+        else:
+            files.append(a)
+        i += 1
+
+    f = (filter_str or '').strip()
+    data = load(files[0]) if files else None
+
+    if f == 'empty':
+        return 0
+
+    # 求值（只支持本项目用到的形态）
+    def containers():
+        return (data or {}).get('containers', {})
+
+    def emit(v):
+        if isinstance(v, (dict, list)):
+            print(json.dumps(v, ensure_ascii=False))
+        elif v is None:
+            pass
+        else:
+            print(v)
+
+    # 1) 读：keys / 取值 / to_entries
+    if f in ('.containers | keys[]', '.containers|keys[]'):
+        for k in sorted(containers().keys()):
+            emit(k)
+        return 0
+
+    if f.startswith('.containers | to_entries[]') or f.startswith('.containers|to_entries[]'):
+        # 形如：... | "\(.key)\t\(.value.distro // "")"
+        import re
+        tmpl = re.search(r'"(.*)"\s*$', f)
+        for k, v in containers().items():
+            if 'select(.value.desktop)' in f and not v.get('desktop'):
+                continue
+            if tmpl:
+                out = tmpl.group(1)
+                out = out.replace(r'\(.key)', str(k))
+                for field in ('type', 'distro', 'desktop', 'name'):
+                    out = out.replace(r'\(.value.%s // "?")' % field,
+                                      str(v.get(field, '?')))
+                    out = out.replace(r'\(.value.%s // "")' % field,
+                                      str(v.get(field, '')))
+                print(out.encode().decode('unicode_escape'))
+        return 0
+
+    if f.startswith('.containers[') and f.endswith('] // {}'):
+        name = named.get('n') or f.split('[')[1].split(']')[0].strip('"')
+        emit(containers().get(name, {}))
+        return 0
+
+    if f.startswith('.containers[') and ' // empty' in f:
+        name = named.get('n'); key = named.get('k')
+        if name is None:
+            import re
+            m = re.search(r'\.containers\["([^"]*)"\]', f)
+            name = m.group(1) if m else None
+        v = containers().get(name or '', {}).get(key or '', '')
+        emit(v)
+        return 0
+
+    # 2) 写：set / del / slurpfile / rename
+    def out_file():
+        return sys.stdout  # 由 shell 重定向到临时文件
+
+    if '.containers[$n] = (.containers[$n] // {})' in f:
+        n, k, v = named['n'], named['k'], named['v']
+        c = containers(); c.setdefault(n, {})[k] = v
+        data['containers'] = c
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+
+    if f.startswith('del(.containers[$n])'):
+        containers().pop(named['n'], None)
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+
+    if f == '.[$k] = $v':
+        data = data if isinstance(data, dict) else {}
+        data[named['k']] = named['v']
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+
+    if f == '.[$k] // empty':
+        if isinstance(data, dict) and named.get('k') in data:
+            emit(data[named['k']])
+        return 0
+
+    if f == 'keys[]':
+        for k in sorted((data or {}).keys()):
+            emit(k)
+        return 0
+
+    if f in ('.', '-S'):
+        print(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+
+    if '.containers[$n] = $m[0]' in f:
+        containers()[named['n']] = slurp['m']
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+
+    if 'del(.containers[$o])' in f:
+        o, n = named['o'], named['n']
+        c = containers()
+        if o in c:
+            c[n] = c.pop(o)
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+
+    sys.stderr.write('jq-shim: 不支持的过滤器: %s\n' % f)
+    return 3
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))
