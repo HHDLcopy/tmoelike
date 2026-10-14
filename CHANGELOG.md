@@ -1,5 +1,29 @@
 # 变更记录
 
+## v2.3.1
+
+### 改进：启动依赖缺失时询问安装（不再直接报错退出）
+- 首次运行前检测 `jq` / `python3`；**缺 `jq` 即询问是否安装**，
+  即使 `python3` 可用也会问（jq 是首选：启动更快、依赖更小）。
+- 交互确认优先用 dialog（有终端时），否则用文本提问；
+  完全非交互（管道/CI）走默认安装；`TMOE_ASSUME_YES=1` 可跳过。
+- 有 `pkg`（Termux）→ 执行 `pkg install -y jq`，装好后继续；
+  无 `pkg` → 给出 Debian/Ubuntu/Alpine/Termux 的手动安装指引后中止。
+- 修正依赖检测：不再只靠 `command -v`（命令"存在"≠"可用"），
+  改为实测（`jq --version` / `python3 -c import sys`），
+  避免 jq 损坏或缺动态库时被误判为可用。
+
+### 修复
+- `_boot_ask_install` 的终端判定：`[ -r /dev/tty ]` 在无控制终端时仍为真，
+  导致 dialog 失败后误判为"拒绝安装"；改用 `-t 0/-t 1` 判定。
+
+### 测试
+- 新增 `tests/cases/deps_prompt.sh`（13 项）：缺 jq 时询问、两者都缺时拒绝并中止、
+  无 pkg 时给出各发行版指引。
+- `tests/fixtures/jq` 支持 `--version` / `-V` / `--help`（更接近真实 jq）。
+- 测试总数 125 → **138**。
+
+
 ## v2.3.0
 
 ### 新增：单文件分发 + 自动引导

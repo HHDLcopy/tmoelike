@@ -79,6 +79,23 @@ Gitee 侧为镜像，若你发现两边版本不同步，以 GitHub `main` 为�
 | `TMOE_PROBE_TIMEOUT=<秒>` | 测速探测超时（默认 8，弱网/测试可调小） |
 | `TMOE_BASE=<目录>` | 覆盖"脚本所在目录"推断 |
 
+### 启动依赖的自动询问
+
+`jq` 是首选（启动更快、依赖更小）。**只要缺 `jq` 就会询问是否安装**，
+即使 `python3` 可用（此时会先提示"将改用 python3 解析，可用但稍慢"）：
+
+```
+提示：未安装 jq，将改用 python3 解析清单（可用但稍慢）。
+需要 jq 才能下载并解析模块清单。
+
+是否现在执行 pkg install jq？ [Y/n]
+```
+
+- 同意 → 执行 `pkg install -y jq`，装好后继续运行；
+- 拒绝 → 若 `python3` 可用则继续（用 python3 解析），否则给出各发行版的
+  手动安装指引（`apt install jq` / `apk add jq` / `pkg install jq`）后中止；
+- 完全非交互（管道/CI）→ 走默认（安装）；`TMOE_ASSUME_YES=1` 可直接跳过询问。
+
 ### 引导参数
 
 ```bash
@@ -134,7 +151,7 @@ tests/                   测试套件（纯 bash，无需 bats）
 | runtime | `proot` `proot-distro` `tar` | `install`/`start`/`helper`/`remove` |
 | compress | `zstd`（导出/备份/恢复）、`xz`/`gzip`（按所选格式） | 备份类命令 |
 | optional | `file`（跨架构 chroot 检测）、`ssh-keygen`、`dialog` | 对应功能 |
-| 引导 | `curl` + (`jq` 或 `python3`) | 仅首次下载模块时需要 |
+| 引导 | `curl` + (`jq` 或 `python3`) | 仅首次下载模块时需要；**缺失时会询问是否自动安装** |
 
 Termux 上安装：
 

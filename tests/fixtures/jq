@@ -39,6 +39,14 @@ def main(argv):
             named[args[i + 1]] = args[i + 2]; i += 2
         elif a == '--slurpfile':
             slurp[args[i + 1]] = load(args[i + 2]); i += 2
+        elif a in ('--version', '-V'):
+            # 版本探测（引导阶段会调用）：在参数解析阶段就返回，
+            # 否则会被下面的通用 flag 分支吞掉
+            print('jq-shim-1.0')
+            return 0
+        elif a in ('--help', '-h'):
+            print('jq-shim: 仅覆盖 tmoelike 用到的过滤器')
+            return 0
         elif a in ('-c', '-e', '-n'):
             pass
         elif a.startswith('-'):
@@ -51,6 +59,15 @@ def main(argv):
 
     f = (filter_str or '').strip()
     data = load(files[0]) if files else None
+
+    # 真实 jq 支持 --version / -V / --help；引导阶段的可用性探测会用到，
+    # 夹具也照做，否则会把"夹具不支持"误判成"jq 不可用"。
+    if f in ('--version', '-V'):
+        print('jq-shim-1.0')
+        return 0
+    if f in ('--help', '-h'):
+        print('jq-shim: 仅覆盖 tmoelike 用到的过滤器')
+        return 0
 
     if f == 'empty':
         return 0

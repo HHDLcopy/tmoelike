@@ -350,6 +350,108 @@ done
 set -- ${TMOE_EXTRA_ARGS[@]+"${TMOE_EXTRA_ARGS[@]}"}
 unset _a TMOE_EXTRA_ARGS
 
+# ---------- 启动依赖：jq 或 python3（解析模块清单用） ----------
+# 为什么在加载前就问：下载模块需要先解析 manifest，此时还没有 lib/，
+# 不能复用 lib/deps.sh 的检查；这里缺失就直接引导安装，而不是报错退出。
+# 注意：不能只用 command -v 判断——命令"存在"不等于"可用"。
+# jq 可能是损坏的二进制、缺动态库、或被一个错误包装脚本遮蔽，
+# 那种情况 command -v 会通过，但真正解析时失败。所以这里实测一次：
+#   jq     -> 能否输出版本号（兼容 1.5 及更早的 --version 写法）
+#   python3-> 能否真正执行
+_boot_jq_usable() {
+    command -v jq >/dev/null 2>&1 || return 1
+    jq --version >/dev/null 2>&1 || jq -V >/dev/null 2>&1
+}
+
+_boot_python_usable() {
+    command -v python3 >/dev/null 2>&1 || return 1
+    python3 -c 'import sys' >/dev/null 2>&1
+}
+
+_boot_have_parser() {
+    _boot_jq_usable && return 0
+    _boot_python_usable && return 0
+    return 1
+}
+
+_boot_missing_parsers() {
+    local miss=()
+    _boot_jq_usable     || miss+=(jq)
+    _boot_python_usable || miss+=(python3)
+    printf '%s\n' "${miss[@]}"
+}
+
+# 交互确认：TUI 已在则用 dialog，否则读 tty，最后才退回默认值
+_boot_ask_install() {
+    local msg="$1" def_yes="${2:-1}"
+    [ "${TMOE_ASSUME_YES:-0}" = "1" ] && return 0
+
+    # dialog 分支：必须是「能写」的终端才算可用。
+    # 注意 [ -r /dev/tty ] 在无控制终端时也可能为真，会导致 dialog 失败后误判，
+    # 所以这里用 -w 并兜底（dialog 失败不直接返回否定，而是继续尝试其他方式）。
+    # 用 -t 判定"是否有终端"：/dev/tty 在无控制终端时可能"存在但打不开"，
+    # 只用 [ -w /dev/tty ] 会误判并让 dialog 报错。
+    if command -v dialog >/dev/null 2>&1 && { [ -t 0 ] || [ -t 1 ]; }; then
+        if dialog --title "缺少依赖" --yesno "$msg" 12 72 </dev/tty >/dev/tty 2>&1; then
+            return 0
+        fi
+    fi
+
+    # 纯文本提示：先解析成可读多行（dialog 用 \n，终端用真换行）
+    printf '%b\n' "$msg" >&2
+    local ans=""
+    if [ -t 0 ] || [ "${TMOE_ASSUME_INTERACTIVE:-0}" = "1" ]; then
+        printf '继续安装？[Y/n] ' >&2
+        read -r ans || ans=""
+        case "$ans" in
+            ""|y|Y|yes|YES) return 0 ;;
+            *) return 1 ;;
+        esac
+    fi
+    # 完全非交互（管道/CI）：用调用方给的默认值
+    [ "$def_yes" = "1" ]
+}
+
+_boot_ensure_parser() {
+    # 语义：jq 是首选（启动更快、依赖更小）。只要缺 jq 就询问，
+    # 哪怕 python3 可用——让用户自己决定是否装 jq；
+    # 两者都没有时才必须询问（否则完全无法解析清单）。
+    if ! _boot_jq_usable; then
+        if _boot_python_usable; then
+            _boot_info "提示：未安装 jq，将改用 python3 解析清单（可用但稍慢）。"
+        else
+            _boot_warn "缺少 jq 与 python3，无法解析模块清单。"
+        fi
+    fi
+    _boot_jq_usable && return 0
+
+    local miss_s; miss_s=$(_boot_missing_parsers | tr '\n' ' ')
+    miss_s=${miss_s% }
+
+    if ! command -v pkg >/dev/null 2>&1; then
+        _boot_die "请用系统包管理器安装 jq 或 python3 后重试：
+  Debian/Ubuntu: apt install jq
+  Alpine:        apk add jq
+  Termux:        pkg install jq"
+    fi
+
+    local pkgs; pkgs=$(_boot_missing_parsers | tr '\n' ' ')
+    pkgs=${pkgs% }
+    if _boot_ask_install "需要 ${miss_s} 才能下载并解析模块清单。\n\n是否现在执行 pkg install ${pkgs}？" 1; then
+        _boot_info "正在安装：pkg install ${pkgs}"
+        if pkg install -y ${pkgs} >/dev/null 2>&1 && _boot_have_parser; then
+            _boot_info "已安装：${pkgs}"
+            return 0
+        fi
+        _boot_warn "自动安装未成功。"
+    fi
+
+    _boot_die "缺少 ${miss_s}，已中止。
+可手动安装后重试：
+  pkg install ${pkgs}
+（或设置 TMOE_LIB=<本地模块目录> 离线运行）"
+}
+
 # ---------- 决定模块目录：显式 > 同目录 lib/ > 缓存 ----------
 if [ -z "${TMOE_LIB:-}" ]; then
     if [ -n "$_tmo_self" ] && [ -f "$_tmo_self" ] && \
@@ -366,6 +468,9 @@ fi
 export TMOE_LIB
 
 # ---------- 加载模块 ----------
+# 解析器缺失时先询问安装（无论走本地 lib 还是联网下载都需要它）
+_boot_ensure_parser
+
 for _m in "${TMOE_MODULES[@]}"; do
     if [ ! -f "${TMOE_LIB}/${_m}.sh" ]; then
         _boot_die "缺少模块：${TMOE_LIB}/${_m}.sh
