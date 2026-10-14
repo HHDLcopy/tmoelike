@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 # ⚠️ AI 生成代码（AI-Generated）—— 测试同样由 AI 编写，用于自我验证。
-# 用例：启动依赖（jq / python3）缺失时的引导询问
+# 用例：启动依赖（jq / python3）缺失时的**自动安装**行为
 #
-# 三个自洽场景（避免夹具自身依赖造成的自相矛盾）：
-#   A. 缺 jq、python3 可用 → 同意安装 → pkg 装上 jq 后可继续运行
-#   B. jq 与 python3 都缺   → 回答 n   → 中止且不调用 pkg
-#   C. 缺依赖且无 pkg 命令  → 给出各发行版安装指引
+# 需求：缺 jq 或 python3 时自动下载安装（Termux 下有 pkg）；
+#       安装失败或没有 pkg 时，给出手动安装指引并中止。
 #
-# 手法：用「退出 127 的包装脚本」遮蔽命令。注意 jq 夹具本身是 python3 脚本，
-#       所以场景 A 必须保留 python3 可用，否则装上的 jq 也跑不起来（测试失真）。
+# 手法：用「退出 127 的包装脚本」遮蔽命令伪造"缺依赖"；
+#       用假 pkg 记录调用并（可选）真正装上夹具 jq。
+#       注意 jq 夹具本身是 python3 脚本，所以"只缺 jq"场景需保留 python3 可用。
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)/lib_helpers.sh"
 
-# 少见但它确实存在：某些发行版把 jq 与 bash 装在同一目录（如 Ubuntu 的 /usr/bin），
-# 本用例靠"遮蔽目录排在真实目录之前"来伪造缺依赖环境，那种布局下无法成立。
-# 因此允许运行器显式跳过——用例逻辑本身不改（TMOE_SKIP_DEPS_PROMPT=1）。
+# 该用例依赖"遮蔽目录排在真实目录之前"来伪造缺依赖；某些发行版把 jq 与 bash
+# 装在同一目录（如 Ubuntu 的 /usr/bin），那种布局下无法构造，允许运行器跳过。
 if [ "${TMOE_SKIP_DEPS_PROMPT:-0}" = "1" ]; then
     echo "跳过：运行器指定 TMOE_SKIP_DEPS_PROMPT=1（jq 与 bash 同目录的布局无法伪造缺依赖）"
     t_report
@@ -42,10 +40,13 @@ done
 FIX_SRC="${TMOE_FIXTURES:-$TMOE_ROOT/tests/fixtures}/jq"
 [ -f "$FIX_SRC" ] || { echo "跳过：找不到 jq 夹具"; t_report; exit 0; }
 
-# 假 pkg：记录调用；含 jq 时把夹具 jq 装到 BIN 并修正 shebang
+# 假 pkg：记录调用；含 python 时提供 python3，含 jq 时装夹具 jq
 cat > "$BIN/pkg" <<EOS
 #!/bin/sh
 echo "pkg \$*" >> "$WORK/pkg.log"
+case "\$*" in
+  *python*) printf '#!/bin/sh\nexec %s "$@"\n' "$PYBIN" > "$BIN/python3"; chmod +x "$BIN/python3" ;;
+esac
 case "\$*" in
   *jq*)
     cp "$FIX_SRC" "$BIN/jq"
@@ -57,23 +58,28 @@ exit 0
 EOS
 chmod +x "$BIN/pkg"
 
+# 会失败的假 pkg（验证"安装失败给指引"）
+FAIL_BIN="$WORK/failbin"
+mkdir -p "$FAIL_BIN"
+printf '#!/bin/sh\necho "pkg: 模拟安装失败" >&2\nexit 1\n' > "$FAIL_BIN/pkg"
+chmod +x "$FAIL_BIN/pkg"
+
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
 
 REAL_DIR="$(dirname "$BASHBIN")"
-# 场景 A：BIN > 真实工具目录（python3 可用）> 只遮蔽 jq
-PATH_A="$BIN:$REAL_DIR:$HIDE_JQ:/system/bin"
-# 场景 B/C：BIN > 遮蔽层（jq+python3 都不可用）> 真实工具目录
-PATH_B="$BIN:$HIDE_BOTH:$REAL_DIR:/system/bin"
+PATH_A="$BIN:$REAL_DIR:$HIDE_JQ:/system/bin"           # 缺 jq、python3 可用
+PATH_B="$BIN:$HIDE_BOTH:$REAL_DIR:/system/bin"         # jq 与 python3 都缺
+PATH_FAIL="$FAIL_BIN:$HIDE_BOTH:$REAL_DIR:/system/bin"  # 都缺且 pkg 安装失败
 
-run_with() { # run_with <PATH> <额外环境...> -- <参数...>
+run_with() {
     local p="$1"; shift
     local envs=() args=() seen=0 a
     for a in "$@"; do
         if [ "$a" = "--" ]; then seen=1; continue; fi
         if [ "$seen" = "0" ]; then envs+=("$a"); else args+=("$a"); fi
     done
-    env HOME="$HOME_T" "${envs[@]}" PATH="$p" \
+    env HOME="$HOME_T" "${envs[@]}" TMOE_LIB="$RUN/lib" PATH="$p" \
         "$BASHBIN" "$RUN/tmoelike.sh" ${args[@]+"${args[@]}"} 2>&1
 }
 
@@ -85,36 +91,29 @@ t_eq "场景A：jq 不可用" "1" "$([ "$rc_jq" -ne 0 ] && echo 1 || echo 0)"
 t_eq "场景A：python3 可用" "0" "$rc_py"
 t_eq "场景B：python3 也不可用" "1" "$([ "$rc_py2" -ne 0 ] && echo 1 || echo 0)"
 
-t_suite "A. 有 python3 但缺 jq → 仍应询问是否安装 jq"
+t_suite "A. 缺 jq → 自动执行 pkg install（不再询问）"
 rm -f "$WORK/pkg.log" "$BIN/jq"
-out=$(run_with "$PATH_A" TMOE_ASSUME_YES=1 -- --help); rc=$?
-t_contains "提示改用 python3" "python3" "$out"
-t_contains "说明将执行 pkg install" "pkg install" "$out"
-if [ -f "$WORK/pkg.log" ] && grep -q "pkg install -y jq" "$WORK/pkg.log"; then
-    t_ok "调用了 pkg install -y jq"
+out=$(run_with "$PATH_A" -- --help); rc=$?
+t_contains "提示将自动安装" "自动安装" "$out"
+t_not_contains "不再出现询问式提问" "是否现在执行" "$out"
+if [ -f "$WORK/pkg.log" ] && grep -q '^pkg install -y ' "$WORK/pkg.log"; then
+    t_ok "自动调用了 pkg install -y"
 else
-    t_fail "未调用 pkg install" "$(cat "$WORK/pkg.log" 2>/dev/null || echo 无日志)"
+    t_fail "未自动调用 pkg install" "$(cat "$WORK/pkg.log" 2>/dev/null || echo 无日志)"
 fi
-# 说明：沙箱里 jq 夹具本身依赖 python3、且命令解析在 bash -c 与入口内存在差异，
-# 因此"安装后继续运行"在沙箱无法稳定复现；此处只断言脚本自身负责的行为。
-# 真机 Termux 上 `pkg install jq` 装真 jq，流程为：询问 → 安装 → 继续。
+t_contains "装好后继续运行" "TMOE-LIKE v" "$out"
 
-t_suite "B. jq 与 python3 都缺 → 回答 n → 中止且不安装"
-rm -f "$WORK/pkg.log" "$BIN/jq"
-out=$(printf 'n\n' | run_with "$PATH_B" TMOE_ASSUME_INTERACTIVE=1 -- --help); rc=$?
-t_eq "退出码非 0" "1" "$rc"
-t_contains "列明缺失项" "jq python3" "$out"
-t_contains "给出手动安装指引" "pkg install" "$out"
-t_eq "未调用 pkg（用户拒绝）" "0" "$([ -f "$WORK/pkg.log" ] && echo 1 || echo 0)"
+t_suite "B. jq 与 python3 都缺 → 自动安装后继续"
+rm -f "$WORK/pkg.log" "$BIN/jq" "$BIN/python3"
+out=$(run_with "$PATH_B" -- --help); rc=$?
+t_eq "退出码 0" "0" "$rc"
+t_contains "输出主流程内容" "TMOE-LIKE v" "$out"
 
-t_suite "C. 无 pkg 命令 → 给出各发行版指引"
-# 本机可能自带 pkg（Termux/沙箱），这里用"只含必要基础工具"的受限 PATH
-# 来确保 pkg 确实不可见（剔除 pkg 所在目录比逐个排除更可靠）。
-# /system/bin 含基础工具但确实没有 pkg（已实测），用它模拟"无 pkg 环境"
-NO_PKG_PATH="/system/bin"
-out=$(run_with "$NO_PKG_PATH" TMOE_ASSUME_YES=1 -- --help); rc=$?
-t_eq "退出码非 0" "1" "$rc"
-t_contains "提示 Debian/Ubuntu 装法" "apt install jq" "$out"
-t_contains "提示 Alpine 装法" "apk add jq" "$out"
+t_suite "C. 自动安装失败 → 给出手动安装指引并中止"
+out=$(run_with "$PATH_FAIL" -- --help); rc=$?
+t_eq "退出码 1" "1" "$rc"
+t_contains "提示 Termux 装法" "pkg install" "$out"
+t_contains "提示 Debian/Ubuntu 装法" "apt install" "$out"
+t_contains "提示 Alpine 装法" "apk add" "$out"
 
 t_report

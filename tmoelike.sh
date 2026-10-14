@@ -428,27 +428,30 @@ _boot_ensure_parser() {
     local miss_s; miss_s=$(_boot_missing_parsers | tr '\n' ' ')
     miss_s=${miss_s% }
 
-    if ! command -v pkg >/dev/null 2>&1; then
-        _boot_die "请用系统包管理器安装 jq 或 python3 后重试：
-  Debian/Ubuntu: apt install jq
-  Alpine:        apk add jq
-  Termux:        pkg install jq"
-    fi
-
     local pkgs; pkgs=$(_boot_missing_parsers | tr '\n' ' ')
     pkgs=${pkgs% }
-    if _boot_ask_install "需要 ${miss_s} 才能下载并解析模块清单。\n\n是否现在执行 pkg install ${pkgs}？" 1; then
-        _boot_info "正在安装：pkg install ${pkgs}"
-        if pkg install -y ${pkgs} >/dev/null 2>&1 && _boot_have_parser; then
-            _boot_info "已安装：${pkgs}"
-            return 0
+
+    # 有 pkg（Termux/Android）就自动安装，不再询问——用户明确要求“自动下载”。
+    # 安装失败或没有 pkg 时，再给出可复制的指引并中止（绝不静默继续）。
+    if command -v pkg >/dev/null 2>&1; then
+        _boot_info "正在自动安装：pkg install -y ${pkgs}"
+        if pkg install -y ${pkgs}; then
+            # 关键：bash 会缓存命令路径。安装前若探测过（解析到旧的/不存在的路径），
+            # 安装后仍会用缓存，导致"装好了却判定不可用"。这里清缓存再检测。
+            hash -r 2>/dev/null || true
+            if _boot_have_parser; then
+                _boot_info "已安装：${pkgs}"
+                return 0
+            fi
         fi
-        _boot_warn "自动安装未成功。"
+        _boot_warn "自动安装 ${pkgs} 未成功（详见上方 pkg 输出）。"
     fi
 
     _boot_die "缺少 ${miss_s}，已中止。
-可手动安装后重试：
-  pkg install ${pkgs}
+请手动安装后重试：
+  Termux:        pkg install ${pkgs}
+  Debian/Ubuntu: apt install ${pkgs}
+  Alpine:        apk add ${pkgs}
 （或设置 TMOE_LIB=<本地模块目录> 离线运行）"
 }
 

@@ -48,8 +48,8 @@
     {
       "name": "proot",
       "file": "proot.sh",
-      "sha256": "dae9b3f9fa26558ad3801b5788eebf274f29f38a473388fb9f72d2f076e4f467",
-      "size": 15031
+      "sha256": "85e51380b4f768454ab231fbc3f571d41e2b200a16b416152224bcd1bc190388",
+      "size": 15651
     },
     {
       "name": "helper",
