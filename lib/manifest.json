@@ -30,8 +30,8 @@
     {
       "name": "paths",
       "file": "paths.sh",
-      "sha256": "f8af9a0003b1d2d6fdcfa13f92bd82d57a1fe3098f9dc8998a233f3a68943de9",
-      "size": 9363
+      "sha256": "8a0cc08c4bfc7892bf7aee0cc2d965bf576a286e5a6c48ba3ae18a01e5234f6c",
+      "size": 9943
     },
     {
       "name": "registry",

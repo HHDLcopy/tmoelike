@@ -91,6 +91,27 @@ container_rootfs_path() {
 # ============================================================
 #  容器列表：三种方式回退（修复 #2：解析脆弱）
 # ============================================================
+# 从 proot-distro list 输出解析"已安装容器名"。
+# 实测各版本格式差异很大，这里兼容三种：
+#   ① Installed containers: 段落 + "  * ubuntu"   ← Termux proot-distro 4.x/5.x
+#   ② [installed] 段落 + "ubuntu"
+#   ③ 纯名字行 + "  ubuntu"
+_pd_parse_installed() {
+    local raw="$1" out=""
+    # ① "* name"
+    out=$(printf '%s\n' "$raw" \
+        | sed -n 's/^[[:space:]]*\*[[:space:]]*\([A-Za-z0-9][A-Za-z0-9._:+-]*\)[[:space:]]*$/\1/p')
+    if [ -n "$out" ]; then printf '%s\n' "$out"; return 0; fi
+    # ② [installed] 段落里的纯名字行
+    out=$(printf '%s\n' "$raw" | sed -n '/^\[installed\]/,/^\[/p' \
+        | awk '/^[[:space:]]*[A-Za-z0-9][A-Za-z0-9._:+-]*[[:space:]]*$/ {print $1}')
+    if [ -n "$out" ]; then printf '%s\n' "$out"; return 0; fi
+    # ③ 纯名字行（只认小写开头，避免把 "Installed containers:" 之类当容器名）
+    printf '%s\n' "$raw" \
+        | awk '/^[[:space:]]*[a-z0-9][a-z0-9._:+-]*[[:space:]]*$/ {print $1}'
+    return 0
+}
+
 list_proot_installed() {
     local out="" names="" rootfs
     rootfs=$(proot_rootfs_dir)
@@ -101,15 +122,18 @@ list_proot_installed() {
         return 0
     fi
 
-    # 方式 1：官方 --installed —— proot-distro 自己报告"已安装了哪些容器"，
-    # 不依赖我们对安装路径的猜测，优先级最高。
+    # 方式 1：官方 list —— 让 proot-distro 自己报告"已安装了哪些容器"。
     # 用途说明：枚举"已安装的容器"正是它的本职；但**不能**用它判断
     # "支持哪些发行版"（那是发行版清单，不是已安装状态）。
+    # 注意：部分版本不认识 --installed（会直接报错），所以两个都试。
+    out=""
     if out=$(proot-distro list --installed 2>/dev/null) && [ -n "$out" ]; then
-        names=$(printf '%s\n' "$out" | sed -n '/\[installed\]/,$p' \
-            | awk '/^[[:space:]]*[a-z0-9]/ && $1 !~ /^\[/ {print $1}')
-        [ -z "$names" ] && names=$(printf '%s\n' "$out" \
-            | awk '/^[[:space:]]*[a-z0-9]/ && $1 !~ /^\[/ {print $1}')
+        :
+    elif out=$(proot-distro list 2>/dev/null) && [ -n "$out" ]; then
+        :
+    fi
+    if [ -n "$out" ]; then
+        names=$(_pd_parse_installed "$out")
         if [ -n "$names" ]; then
             printf '%s\n' "$names"
             return 0
@@ -121,16 +145,6 @@ list_proot_installed() {
     if [ -d "$rootfs" ]; then
         names=$(find_dirs "$rootfs" \
             | grep -vxE 'locks|cache|tmp|installed-rootfs|rootfs|containers')
-        if [ -n "$names" ]; then
-            printf '%s\n' "$names"
-            return 0
-        fi
-    fi
-
-    # 方式 3：很老的版本没有 --installed，list 输出里带 installed 标记
-    if out=$(proot-distro list 2>/dev/null) && [ -n "$out" ]; then
-        names=$(printf '%s\n' "$out" \
-            | awk 'tolower($0) ~ /installed/ && $1 ~ /^[a-z0-9]/ {print $1}')
         if [ -n "$names" ]; then
             printf '%s\n' "$names"
             return 0
