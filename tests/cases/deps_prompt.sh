@@ -71,38 +71,10 @@ run_with() { # run_with <PATH> <额外环境...> -- <参数...>
 t_suite "遮蔽环境自检"
 PATH="$PATH_A" jq --version >/dev/null 2>&1; rc_jq=$?
 PATH="$PATH_A" python3 -c pass >/dev/null 2>&1; rc_py=$?
+PATH="$PATH_B" python3 -c pass >/dev/null 2>&1; rc_py2=$?
 t_eq "场景A：jq 不可用" "1" "$([ "$rc_jq" -ne 0 ] && echo 1 || echo 0)"
 t_eq "场景A：python3 可用" "0" "$rc_py"
-PATH="$PATH_B" python3 -c pass >/dev/null 2>&1; rc_py2=$?
 t_eq "场景B：python3 也不可用" "1" "$([ "$rc_py2" -ne 0 ] && echo 1 || echo 0)"
-
-# 不同平台 PATH 布局不同（例如 Ubuntu 上 jq 与 bash 同在 /usr/bin），
-# 若遮蔽没生效，本用例的后续断言不成立——此时明确跳过，而不是报假失败。
-# 判据用「实测能否执行」而非 command -v：遮蔽脚本本身是可执行的，
-# command -v 会对它返回成功，无法反映真实可用性。
-PATH="$PATH_A" jq --version >/dev/null 2>&1; mask_jq_ok=$?
-
-# 若平台把 jq 与 bash 放在同一目录（如 Ubuntu 的 /usr/bin），
-# 遮蔽会被真实目录越过。此时自动把"真实 jq 所在目录"整体替换为遮蔽目录，
-# 让本用例在更多平台也能真跑，而不是只能跳过。
-if [ "$mask_jq_ok" -eq 0 ]; then
-    REAL_JQ_DIR="$(dirname "$(command -v jq 2>/dev/null || echo /nonexistent)")"
-    FIX_A=""
-    for d in $PATH_A; do
-        if [ "$d" = "$REAL_JQ_DIR" ]; then FIX_A="$FIX_A $HIDE_JQ"; else FIX_A="$FIX_A $d"; fi
-    done
-    FIX_A="${FIX_A# }"
-    PATH="$FIX_A" jq --version >/dev/null 2>&1 && mask_jq_ok=0 || mask_jq_ok=1
-    if [ "$mask_jq_ok" -ne 0 ]; then PATH_A="$FIX_A"; fi
-fi
-
-PATH="$PATH_B" python3 -c pass >/dev/null 2>&1; mask_py_ok=$?
-if [ "$mask_jq_ok" -eq 0 ] || [ "$mask_py_ok" -eq 0 ]; then
-    echo "跳过：本机 PATH 布局使遮蔽无效（jq/python3 与 bash 同目录），"
-    echo "      无法构造“缺依赖”环境；该用例仅在遮蔽可靠时验证。"
-    t_report
-    exit 0
-fi
 
 t_suite "A. 有 python3 但缺 jq → 仍应询问是否安装 jq"
 rm -f "$WORK/pkg.log" "$BIN/jq"
