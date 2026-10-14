@@ -6,7 +6,7 @@
     {
       "name": "common",
       "file": "common.sh",
-      "sha256": "dbed42c2f64667acf0c5c25109fe585517c22330ffc62e1d968da1cc0b38346a",
+      "sha256": "53b2a9cdd980ea5b9daf9af083d0dbcc1e1da9c89e34d525a51f0fe9897518bc",
       "size": 6028
     },
     {
@@ -48,14 +48,14 @@
     {
       "name": "proot",
       "file": "proot.sh",
-      "sha256": "3caa282ec2df0f23581c98ef6e38837cf3f44b8666f9490e9bc69c87eaebf447",
-      "size": 15620
+      "sha256": "51ea7add28a304b04f0c529df4af37306a6e2f7629dd63ed0146f01956f888b4",
+      "size": 15763
     },
     {
       "name": "helper",
       "file": "helper.sh",
-      "sha256": "12e4c7b5ea23cb2eb0219cf28b626198d6fbafa8e711590e283187be372d6458",
-      "size": 19346
+      "sha256": "050a93dfdf14967c0bdca533a01522bbafd212db000b8849cb437053946751b8",
+      "size": 20047
     },
     {
       "name": "chroot",

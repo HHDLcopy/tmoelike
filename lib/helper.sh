@@ -7,15 +7,11 @@
 # ============================================================
 #  ★ 容器内助手（修复 #5：兼容无 bash）
 # ============================================================
-deploy_container_helper() {
-    local name="$1"
-    local rootfs; rootfs=$(container_rootfs_path "$name")
-    [ -d "$rootfs" ] || { log "rootfs 不存在：$rootfs"; return 1; }
-
-    mkdir -p "${rootfs}/usr/local/bin"
-
-    # 用带引号的 heredoc 写入助手，主脚本不展开变量
-    cat > "${rootfs}/usr/local/bin/${HELPER_NAME}" <<'CONTAINER_HELPER_EOF'
+# 助手模板：把内容打到 stdout，供部署与"是否过期"比对共用。
+# 必须是同一个来源，否则比对会失真。
+helper_template() {
+    # 用带引号的 heredoc 输出，主脚本不展开变量
+    cat <<'CONTAINER_HELPER_EOF'
 #!/usr/bin/env sh
 # ============================================================
 #  tmoelike-tui — 容器内配置助手 (POSIX sh 兼容)
@@ -448,24 +444,45 @@ main_menu() {
 
 main_menu
 CONTAINER_HELPER_EOF
+}
 
-    chmod +x "${rootfs}/usr/local/bin/${HELPER_NAME}"
+deploy_container_helper() {
+    local name="$1"
+    local rootfs; rootfs=$(container_rootfs_path "$name")
+    [ -d "$rootfs" ] || { log "rootfs 不存在：$rootfs"; return 1; }
 
-    # 若容器内无 bash，写一个兼容包装器确保能执行
-    # (Alpine 等默认无 bash)
-    if [ ! -x "${rootfs}/bin/bash" ] && [ ! -x "${rootfs}/usr/bin/bash" ]; then
-        # 助手本身是 POSIX sh，直接用 /bin/sh 也能跑
-        :
-    fi
+    mkdir -p "${rootfs}/usr/local/bin"
+    local dest="${rootfs}/usr/local/bin/${HELPER_NAME}"
+
+    # 助手本身是 POSIX sh（见其文件头），Alpine 等没有 bash 的容器也能直接跑，
+    # 因此不再需要额外的 bash 包装器。
+    helper_template > "$dest" || return 1
+    chmod +x "$dest" 2>/dev/null || true
 
     log "部署容器助手到 $name"
+    return 0
+}
+
+# 助手是否需要（重新）部署：文件缺失，或内容已与当前模板不一致。
+# 只判"文件是否存在"会让老用户升级后永远拿不到修好的助手
+# （曾导致容器里持续报 `tmoelike-tui: 95: Bad substitution`）。
+# 返回 0 = 需要部署，1 = 已是最新。
+container_helper_stale() {
+    local name="$1"
+    local rootfs; rootfs=$(container_rootfs_path "$name")
+    local dest="${rootfs}/usr/local/bin/${HELPER_NAME}"
+    [ -f "$dest" ] || return 0
+    local want have
+    want=$(helper_template)
+    have=$(cat "$dest" 2>/dev/null)
+    [ "$want" = "$have" ] && return 1
     return 0
 }
 
 run_container_helper() {
     local name="$1"
     local rootfs; rootfs=$(container_rootfs_path "$name")
-    if [ ! -f "${rootfs}/usr/local/bin/${HELPER_NAME}" ]; then
+    if container_helper_stale "$name"; then
         deploy_container_helper "$name" || {
             warn "容器助手部署失败（rootfs=${rootfs}），改为进入 shell。"
         }

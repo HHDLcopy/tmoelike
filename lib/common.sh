@@ -32,7 +32,7 @@ readonly REGISTRY="${CONFIG_DIR}/containers.json"
 readonly CHROOT_SHA_FILE="${CONFIG_DIR}/chroot-sha256.json"
 readonly CHROOT_BASE="/data/local/tmp/tmoelike-chroot"
 readonly HELPER_NAME="tmoelike-tui"
-readonly HELPER_VERSION="3"
+readonly HELPER_VERSION="4"
 readonly MAIN_LOG="${LOG_DIR}/main.log"
 
 # 自更新源（GitHub Releases API；可用环境变量覆盖）

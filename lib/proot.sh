@@ -102,7 +102,9 @@ container_helper_ensure() {
     local name="$1"
     local rootfs; rootfs=$(container_rootfs_path "$name")
     [ -d "$rootfs" ] || { warn "容器不存在：$name"; return 1; }
-    if [ ! -f "${rootfs}/usr/local/bin/${HELPER_NAME}" ]; then
+    # 注意：判据是"内容是否过期"而不是"文件是否存在"。
+    # 只看存在性会让已装容器的老用户升级后永远用着旧助手。
+    if container_helper_stale "$name"; then
         deploy_container_helper "$name" || return 1
     fi
     return 0

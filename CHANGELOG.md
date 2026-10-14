@@ -1,5 +1,24 @@
 # 变更记录
 
+## v2.3.4
+
+### 修复
+1. **容器内助手报 `95: Bad substitution`、登录后进不去助手**：助手 shebang 是
+   `#!/usr/bin/env sh`，而 Ubuntu/Debian 容器的 `/bin/sh` 是 dash、Alpine 是
+   busybox ash，二者都不支持 bash 的 `${@:3}` 参数切片。`m()` / `cl()` 已改为
+   `shift 2` + `"$@"` 的纯 POSIX 写法。
+2. **老用户升级后拿不到修好的助手**：`container_helper_ensure()` 原先只在
+   "文件不存在"时部署，于是已装容器会永远保留旧助手（升级也无效）。
+   现在按**内容比对**判断：助手缺失、或与当前模板不一致，就重新部署；
+   `run_container_helper()` 走同一判据。`HELPER_VERSION` → 4。
+
+### 测试
+- 新增 `tests/cases/helper_posix.sh`：自动抽取 `lib/*.sh` 中所有声明 `#!/bin/sh`
+  的 heredoc 助手脚本，断言无 `${@:N}` / `${*:N}` 切片、经 `dash -n`
+  （无 dash 时回落 `busybox ash -n`）解析通过、且调用了 `main_menu`。
+- 新增 `tests/cases/helper_deploy.sh`：缺失 / 过期 / 已最新三态、
+  `rootfs/` 子目录布局、容器不存在，以及两处判据的静态回归。
+
 ## v2.3.3
 
 ### 修复（用户反馈的两处）
