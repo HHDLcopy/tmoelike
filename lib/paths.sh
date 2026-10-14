@@ -21,11 +21,14 @@ proot_rootfs_dir() {
     fi
     local prefix="${PREFIX:-/data/data/com.termux/files/usr}"
     # 候选按"常见程度"排列；不同 proot-distro 版本/安装方式会用不同位置
+    # 只列"容器目录的父目录"。绝不能放裸的 proot-distro 根目录：
+    # 它下面是 locks/cache/containers 这些内部目录，会被误当成容器。
     local candidates=(
         "${prefix}/var/lib/proot-distro/installed-rootfs"
+        "${prefix}/var/lib/proot-distro/containers"
         "${prefix}/var/lib/proot-distro/rootfs"
-        "${prefix}/var/lib/proot-distro"
         "/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs"
+        "/data/data/com.termux/files/usr/var/lib/proot-distro/containers"
         "${HOME}/.proot-distro/installed-rootfs"
         "${HOME}/.local/share/proot-distro/installed-rootfs"
     )
@@ -104,8 +107,10 @@ list_proot_installed() {
     fi
 
     # 方式 2：扫 rootfs 目录（不依赖任何命令输出格式）
+    # 过滤掉 proot-distro 的内部目录，避免把 locks/cache 之类当成容器。
     if [ -d "$rootfs" ]; then
-        names=$(find_dirs "$rootfs")
+        names=$(find_dirs "$rootfs" \
+            | grep -vxE 'locks|cache|tmp|installed-rootfs|rootfs|containers')
         if [ -n "$names" ]; then
             printf '%s\n' "$names"
             return 0
