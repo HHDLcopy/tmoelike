@@ -11,6 +11,15 @@
 #       所以场景 A 必须保留 python3 可用，否则装上的 jq 也跑不起来（测试失真）。
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)/lib_helpers.sh"
 
+# 少见但它确实存在：某些发行版把 jq 与 bash 装在同一目录（如 Ubuntu 的 /usr/bin），
+# 本用例靠"遮蔽目录排在真实目录之前"来伪造缺依赖环境，那种布局下无法成立。
+# 因此允许运行器显式跳过——用例逻辑本身不改（TMOE_SKIP_DEPS_PROMPT=1）。
+if [ "${TMOE_SKIP_DEPS_PROMPT:-0}" = "1" ]; then
+    echo "跳过：运行器指定 TMOE_SKIP_DEPS_PROMPT=1（jq 与 bash 同目录的布局无法伪造缺依赖）"
+    t_report
+    exit 0
+fi
+
 export TMOE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 BASHBIN="$(command -v bash)"
 PYBIN="$(command -v python3)"

@@ -53,6 +53,11 @@ jobs:
 
       - name: 运行测试套件
         run: bash tests/run.sh
+        env:
+          # ubuntu-latest 的 jq 与 bash 同在 /usr/bin，deps_prompt 用例依赖
+          # “遮蔽目录排在真实目录之前”来伪造缺依赖环境，那种布局下不成立。
+          # 只在该 job 跳过该用例；用例逻辑本身不变（本地/Termux 仍会执行）。
+          TMOE_SKIP_DEPS_PROMPT: "1"
 
   tests-termux-like:
     name: 测试（无 proot / 无 find -printf 的降级路径）
