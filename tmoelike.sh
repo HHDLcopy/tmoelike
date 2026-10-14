@@ -17,6 +17,7 @@
 #    - TMOE_REFRESH_LIB=1   强制重新下载（等价 --refresh-lib）
 #    - TMOE_SOURCES="名|URL 名|URL"            覆盖下载源
 #    - TMOE_MANIFEST_SHA256=<sha256>          固定清单指纹（防清单被替换）
+#    - TMOE_PROBE_TIMEOUT=<秒>                测速探测超时（默认 8，弱网可调小）
 # ============================================================
 set -euo pipefail
 shopt -s inherit_errexit 2>/dev/null || true
@@ -88,7 +89,8 @@ _boot_speedtest() {
         names+=("$name"); urls+=("$url")
         (
             local t=""
-            t=$(curl -fsSL --connect-timeout 3 --max-time 8 \
+            t=$(curl -fsSL --connect-timeout 3 \
+                    --max-time "${TMOE_PROBE_TIMEOUT:-8}" \
                     -o "${dir}/${name}.json" -w '%{time_total}' \
                     "${url}/lib/manifest.json" 2>/dev/null) || t=""
             [ -n "$t" ] && printf '%s' "$t" > "${dir}/${name}.time"

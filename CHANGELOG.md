@@ -1,5 +1,34 @@
 # 变更记录
 
+## v2.3.0
+
+### 新增：单文件分发 + 自动引导
+- **用户只需下载 `tmoelike.sh`**；其余 19 个模块首次运行时自动获取。
+- 引导流程：并行探测 GitHub / Gitee 的 `lib/manifest.json`（按 `curl -w time_total`
+  测速）→ 选最快可用源 → 逐模块下载并比对 SHA256 → 全部通过后原子安装到
+  `~/.tmoelike/cache/lib`。
+- 首选源失败时自动回退到另一个源；缓存齐全时完全离线启动。
+- 仓库内同时存在 `lib/` 时**优先用本地**（开发友好，不联网）。
+- 新增引导参数：`--refresh-lib`、`--offline`；新增环境变量
+  `TMOE_LIB` / `TMOE_SOURCES` / `TMOE_MANIFEST_SHA256` / `TMOE_NO_FETCH` /
+  `TMOE_REFRESH_LIB` / `TMOE_PROBE_TIMEOUT` / `TMOE_BASE`。
+- 新增 `lib/manifest.json` 与生成器 `tools/gen_manifest.py`（`--check` 供 CI 校验）。
+
+### 安全（自动下载必须收敛）
+- 每个模块**逐文件 SHA256 硬校验**；任一不符即中止，且**不写入任何缓存**
+  （避免半成品模块被 `source`）。
+- 校验失败不重试、不换源、不降级，避免"换个源就过了"掩盖投毒。
+- 支持 `TMOE_MANIFEST_SHA256` 固定清单指纹；首次运行记录指纹，之后不一致会告警。
+- 支持把下载源收敛到自控主机；每日最多一次的更新提示，不阻塞启动。
+- README 明确写出信任边界：清单与被下载模块同源，能防传输损坏/单文件替换，
+  **不能防源被完全接管**；在意者应 `TMOE_LIB` 离线运行。
+
+### 测试
+- 新增 `tests/cases/bootstrap.sh`：测速选源、缓存命中、离线报错、篡改拒绝、
+  指纹固定、全源不可达、`--refresh-lib` 等 20 项断言（用本地模拟源，7 秒完成）。
+- 测试总数 105 → **125**。
+
+
 ## v2.2.0
 
 ### 结构

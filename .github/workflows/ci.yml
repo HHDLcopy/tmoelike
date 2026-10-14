@@ -17,7 +17,11 @@ jobs:
           set -e
           bash -n tmoelike.sh
           for f in lib/*.sh; do bash -n "$f"; done
+          for f in tests/*.sh tests/cases/*.sh; do bash -n "$f"; done
           echo "语法检查通过"
+
+      - name: 模块清单与 lib/ 一致性
+        run: python3 tools/gen_manifest.py --check
 
   shellcheck:
     name: ShellCheck
