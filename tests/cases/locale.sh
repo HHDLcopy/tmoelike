@@ -38,8 +38,10 @@ else
 fi
 {
     printf '%s\n' "$fn"
-    printf '%s\n' 'ensure_utf8_locale'
-    printf '%s\n' 'printf "%s" "$LC_ALL"'
+    cat <<'PROBE'
+ensure_utf8_locale
+printf '%s' "$LC_ALL"
+PROBE
 } > "$W/fn.sh"
 
 if command -v dash >/dev/null 2>&1; then

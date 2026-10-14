@@ -31,7 +31,10 @@ t_eq "助手可执行" "yes" "$([ -x "$dest" ] && echo yes || echo no)"
 stale ubuntu; t_eq "刚部署完 stale=1" "1" "$?"
 
 t_suite "内容是旧版本 → 必须重部署（曾经漏掉的那一步）"
-printf '#!/usr/bin/env sh\nm() { echo "${@:3}"; }\n' > "$dest"
+cat > "$dest" <<'OLD_HELPER'
+#!/usr/bin/env sh
+m() { echo "${@:3}"; }
+OLD_HELPER
 stale ubuntu; t_eq "内容不同时 stale=0" "0" "$?"
 container_helper_ensure ubuntu >/dev/null 2>&1
 t_eq "ensure 返回 0" "0" "$?"
