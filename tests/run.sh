@@ -18,7 +18,12 @@ failed_cases=()
 # 夹具（jq / proot / proot-distro 桩）需要可执行位；
 # /sdcard 之类的 fuse 挂载无法 chmod，因此复制到可执行位置后再注入 PATH。
 TMOE_FIXTURES="$(mktemp -d)"
-trap 'rm -rf "$TMOE_FIXTURES"' EXIT
+# 隔离测试用的 rootfs 与 chroot 挂载记录：避免污染真实环境，
+# 也避免在无权限路径（如 Linux 的 /var）创建目录而失败。
+TMOE_ROOTFS_DIR="$(mktemp -d)"
+TMOE_MOUNTS_FILE="$(mktemp)"
+export TMOE_ROOTFS_DIR TMOE_MOUNTS_FILE
+trap 'rm -rf "$TMOE_FIXTURES" "$TMOE_ROOTFS_DIR"; rm -f "$TMOE_MOUNTS_FILE"' EXIT
 if [ -d "${TESTS_DIR}/fixtures" ]; then
     cp -f "${TESTS_DIR}/fixtures/"* "$TMOE_FIXTURES/" 2>/dev/null || true
     chmod 755 "$TMOE_FIXTURES"/* 2>/dev/null || true

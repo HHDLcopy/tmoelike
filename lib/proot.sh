@@ -134,7 +134,8 @@ start_proot_container() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
     local c
-    c=$(tui_menu "启动" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "启动" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     local mode
@@ -151,7 +152,8 @@ remove_proot_container() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
     local c
-    c=$(tui_menu "删除" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "删除" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
     if tui_yesno "确认" "删除 ${c}？不可恢复。"; then
         if container_remove "$c"; then
@@ -169,7 +171,8 @@ export_container() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
     local c
-    c=$(tui_menu "导出" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "导出" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     local rootfs; rootfs=$(container_rootfs_path "$c")
@@ -227,7 +230,8 @@ backup_container() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
     local c
-    c=$(tui_menu "备份" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "备份" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     local ts; ts=$(date +%Y%m%d-%H%M%S)
@@ -296,7 +300,8 @@ clone_container() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
     local c
-    c=$(tui_menu "克隆" "选择源容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "克隆" "选择源容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     local name
@@ -324,7 +329,8 @@ rename_container() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && return
     local c
-    c=$(tui_menu "重命名" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "重命名" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
     local n
     n=$(tui_input "重命名" "新名称：" "$c") || return
@@ -381,7 +387,8 @@ proot_menu() {
                 local cs; cs=$(list_proot_installed)
                 [ -z "$cs" ] && { tui_msg "提示" "暂无容器。"; continue; }
                 local cc
-                cc=$(tui_menu "助手" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || continue
+                local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+                cc=$(tui_menu "助手" "选择容器：" ${names[@]+"${names[@]}"}) || continue
                 [ -n "$cc" ] && run_container_helper "$cc" ;;
             remove)  remove_proot_container ;;
             back|"") return ;;

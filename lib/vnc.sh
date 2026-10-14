@@ -17,9 +17,11 @@ setup_vnc() {
     local container="" de="none"
     if [ -n "$cs" ]; then
         local c
+        local names=(); local _c
+        for _c in $cs; do names+=("$_c" "$_c"); done
         c=$(tui_menu "VNC 目标" "选择容器（none 为 Termux 本机）：" \
             none "Termux 本机 xterm" \
-            $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+            ${names[@]+"${names[@]}"}) || return
         container="$c"
         [ "$container" != "none" ] && de=$(registry_get "$container" "desktop" "none")
     fi

@@ -53,7 +53,8 @@ cli_list() {
         done
 }
 cli_export() {
-    local name="$1" out="${2:-${BACKUP_DIR}/${name}-$(date +%Y%m%d-%H%M%S).tar.zst}"
+    local name="$1" out="$2"
+    [ -n "$out" ] || out="${BACKUP_DIR}/${name}-$(date +%Y%m%d-%H%M%S).tar.zst"
     local rootfs; rootfs=$(container_rootfs_path "$name")
     [ -d "$rootfs" ] || die "容器不存在：$name"
     zstd_create "$rootfs" "$out" 3 || die "导出失败"

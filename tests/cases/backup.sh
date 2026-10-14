@@ -35,7 +35,13 @@ if [ -z "$(ls -A "$BACKUP_DIR" 2>/dev/null)" ]; then
     done
     keep_backups smoketest 3 >/dev/null 2>&1
     t_eq "保留 3 份" "3" "$(find "$BACKUP_DIR" -maxdepth 1 -name 'smoketest-*' | wc -l | tr -d ' ')"
-    t_eq "保留最新一份" "smoketest-20250107-000000" "$(ls -1 "$BACKUP_DIR" | grep smoketest | sort -r | head -1)"
+    latest=""
+    for d in "$BACKUP_DIR"/smoketest-*; do
+        [ -d "$d" ] || continue
+        b=$(basename "$d")
+        if [[ "$b" > "$latest" ]]; then latest="$b"; fi
+    done
+    t_eq "保留最新一份" "smoketest-20250107-000000" "$latest"
     rm -rf "$BACKUP_DIR"/smoketest-*
 else
     t_ok "跳过（备份目录非空，避免误删真实数据）"

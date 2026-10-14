@@ -4,6 +4,10 @@
 #  ⚠️ AI 生成代码（AI-Generated）—— 需求与验收来自人类，实现由 AI 完成。
 #  本文件由入口 tmoelike.sh 通过 source 加载，不单独执行。
 # ------------------------------------------------------------
+# PREFIX：Termux 下由环境提供；非 Termux（如 CI）给出默认值，
+# 避免 set -u 下引用未定义变量。
+: "${PREFIX:=/data/data/com.termux/files/usr}"
+
 # ---------- 常量 ----------
 readonly TMOE_VERSION="2.2.0"
 

@@ -19,8 +19,8 @@ check_root() {
     return 0
 }
 
-# 挂载点记录文件
-CHROOT_MOUNTS_FILE="/data/local/tmp/tmoelike-mounts.txt"
+# 挂载点记录文件（可用环境变量覆盖，便于测试与自定义位置）
+CHROOT_MOUNTS_FILE="${TMOE_MOUNTS_FILE:-/data/local/tmp/tmoelike-mounts.txt}"
 
 # ---------- su 执行辅助：把脚本落盘再执行 ----------
 # 为什么不用 su -c "长字符串"：变量/引号/通配符会被两遍 shell 解析，
@@ -185,7 +185,8 @@ enter_chroot() {
     local cs; cs=$(list_chroot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "暂无 chroot 容器。"; return; }
     local c
-    c=$(tui_menu "进入" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "进入" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     mount_chroot "$c"
@@ -210,7 +211,8 @@ remove_chroot_container() {
     local cs; cs=$(list_chroot_installed)
     [ -z "$cs" ] && return
     local c
-    c=$(tui_menu "删除" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "删除" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
     tui_yesno "确认" "删除 ${c}？" || return
 

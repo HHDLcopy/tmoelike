@@ -14,17 +14,22 @@ get_chroot_sha() {
 #  动态路径：proot-distro rootfs 位置（修复 #1）
 # ============================================================
 proot_rootfs_dir() {
-    # 优先探测不同版本可能的位置
+    # TMOE_ROOTFS_DIR 可显式覆盖（测试隔离 / 自定义安装位置）
+    if [ -n "${TMOE_ROOTFS_DIR:-}" ]; then
+        echo "$TMOE_ROOTFS_DIR"
+        return 0
+    fi
+    local prefix="${PREFIX:-/data/data/com.termux/files/usr}"
     local candidates=(
-        "${PREFIX}/var/lib/proot-distro/installed-rootfs"
-        "${PREFIX}/var/lib/proot-distro/rootfs"
+        "${prefix}/var/lib/proot-distro/installed-rootfs"
+        "${prefix}/var/lib/proot-distro/rootfs"
         "${HOME}/.proot-distro/installed-rootfs"
     )
     for d in "${candidates[@]}"; do
         [ -d "$d" ] && { echo "$d"; return 0; }
     done
     # 找不到就返回第一个（创建时使用）
-    echo "${PREFIX}/var/lib/proot-distro/installed-rootfs"
+    echo "${prefix}/var/lib/proot-distro/installed-rootfs"
 }
 container_rootfs_path() {
     local name="$1"

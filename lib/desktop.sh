@@ -104,7 +104,8 @@ install_desktop() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "请先安装 proot 容器。"; return; }
     local c
-    c=$(tui_menu "桌面环境" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "桌面环境" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     local de
@@ -165,7 +166,8 @@ install_software() {
     local cs; cs=$(list_proot_installed)
     [ -z "$cs" ] && { tui_msg "提示" "请先安装 proot 容器。"; return; }
     local c
-    c=$(tui_menu "软件安装" "选择容器：" $(for x in $cs; do echo "$x"; echo "$x"; done)) || return
+    local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
+    c=$(tui_menu "软件安装" "选择容器：" ${names[@]+"${names[@]}"}) || return
     [ -z "$c" ] && return
 
     tui_msg "提示" "建议在容器内通过 ${HELPER_NAME} 安装软件，\n因为容器内助手会自动适配发行版和镜像源。"

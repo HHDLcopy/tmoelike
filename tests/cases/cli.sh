@@ -13,7 +13,7 @@ for _d in "${TMOE_ROOT}/.patch/bin" "${HOME}/.tmoelike-testbin"; do
     case ":${PATH}:" in *":${_d}:"*) ;; *) PATH="${_d}:${PATH}" ;; esac
 done
 export PATH
-ROOTFS="${PREFIX}/var/lib/proot-distro/installed-rootfs"
+ROOTFS="${TMOE_ROOTFS_DIR:?测试运行器应设置 TMOE_ROOTFS_DIR}"
 export TMOE_TEST_REGISTRY="${HOME}/.tmoelike/config/containers.json"
 
 pass=0; fail=0
@@ -35,7 +35,7 @@ has "帮助含 backup 子命令" "backup <name>" "$out"
 
 st=$(bash "$S" status 2>&1)
 has "status 版本" "TMOE-LIKE v2.2.0" "$st"
-has "status 架构 arm64" "架构：arm64" "$st"
+has "status 架构（本机实际）" "架构：$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')" "$st"
 has "status 表头" "NAME" "$st"
 
 echo "== B. 错误处理 =="
