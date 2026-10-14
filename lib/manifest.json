@@ -54,8 +54,8 @@
     {
       "name": "helper",
       "file": "helper.sh",
-      "sha256": "460f78e7abceb135e2612f2a8b3e1bc1ccda3211e7d782a3e47fc0cd63203b8d",
-      "size": 19201
+      "sha256": "12e4c7b5ea23cb2eb0219cf28b626198d6fbafa8e711590e283187be372d6458",
+      "size": 19346
     },
     {
       "name": "chroot",

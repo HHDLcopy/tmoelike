@@ -110,8 +110,9 @@ ensure_tui() {
 }
 ensure_tui
 
-m()    { $TUI --title "$1" --menu      "$2" 22 78 14 "${@:3}" 3>&1 1>&2 2>&3; }
-cl()   { $TUI --title "$1" --checklist "$2" 22 78 14 "${@:3}" 3>&1 1>&2 2>&3; }
+# 用 shift 取 $@ 的 POSIX 写法：容器内 /bin/sh 是 dash，不支持 bash 的 "${@:3}"
+m()    { _t="$1"; _d="$2"; shift 2; $TUI --title "$_t" --menu      "$_d" 22 78 14 "$@" 3>&1 1>&2 2>&3; }
+cl()   { _t="$1"; _d="$2"; shift 2; $TUI --title "$_t" --checklist "$_d" 22 78 14 "$@" 3>&1 1>&2 2>&3; }
 msg()  { $TUI --title "$1" --msgbox    "$2" 14 70; }
 inp()  { $TUI --title "$1" --inputbox  "$2" 12 70 "${3:-}" 3>&1 1>&2 2>&3; }
 info() { $TUI --title "$1" --infobox   "$2" 10 70; }
