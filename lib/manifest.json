@@ -24,8 +24,8 @@
     {
       "name": "deps",
       "file": "deps.sh",
-      "sha256": "3cb326c9b15377db2f609e4e4f21d45d0efa49dfc8c19741655e31187c4ebdf2",
-      "size": 2827
+      "sha256": "26db7c999b9bddcb5311aa311238ae95b4e99268e0ab6cfbcea110ac833ed54b",
+      "size": 3408
     },
     {
       "name": "paths",

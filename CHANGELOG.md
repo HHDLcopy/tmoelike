@@ -1,5 +1,21 @@
 # 变更记录
 
+## v2.3.2
+
+### 修复（线上报错）
+- **`deps_install: command not found`**：`ensure_deps` 在用户选择"自动安装依赖"后
+  调用 `deps_install`，但该函数在 v2.2 模块化重构时丢失，只剩调用点。
+  表现为缺 `proot`/`proot-distro` 时点 Yes 直接报
+  `deps.sh: line 48: deps_install: command not found / 错误：依赖安装失败`。
+  现已补回：无 `pkg` 时给警告并返回非 0，有 `pkg` 时执行 `pkg install -y <包名>`。
+- 教训：调用点与定义必须成对；本次同时补了回归测试（见下）。
+
+### 测试
+- `tests/cases/core.sh` 新增 2 项：断言 `deps_install` 已定义、且确实调用
+  `pkg install -y <包名>`——防止该函数再次被重构弄丢。
+- 测试总数 138 → **140**。
+
+
 ## v2.3.1
 
 ### 改进：启动依赖缺失时询问安装（不再直接报错退出）

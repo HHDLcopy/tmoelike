@@ -39,6 +39,21 @@ deps_require() {
     done
 }
 
+# 安装依赖（ensure_deps 在用户确认后调用）
+# 注意：这个函数曾在重构中丢失，只剩 ensure_deps 的调用点，
+# 导致用户在缺 proot/proot-distro 时命中
+#   deps.sh: line 48: deps_install: command not found
+# 教训：调用点与定义必须成对，且要有覆盖"缺依赖并选择安装"的测试。
+deps_install() {
+    (($#)) || return 0
+    if ! command -v pkg >/dev/null 2>&1; then
+        warn "未找到 pkg（非 Termux 环境），请手动安装：$*"
+        return 1
+    fi
+    log "安装依赖：$*"
+    pkg install -y "$@"
+}
+
 # 交互式（TUI）依赖检查：可选择自动安装
 ensure_deps() {
     local miss=()

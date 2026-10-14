@@ -66,6 +66,31 @@ config_set test_key test_value >/dev/null 2>&1
 t_eq "写入后可读" "test_value" "$(config_get test_key '')"
 t_eq "缺省值生效" "fallback" "$(config_get no_such_key fallback)"
 
+t_suite "deps_install 存在性（曾因缺失导致 ensure_deps: command not found）"
+# 直接断言函数已定义——这是这次线上报错的根因，必须有测试守住。
+if declare -F deps_install >/dev/null 2>&1; then
+    t_ok "deps_install 已定义"
+else
+    t_fail "deps_install 未定义（ensure_deps 会报 command not found）"
+fi
+
+# 行为：调用 pkg 并透传包名
+dep_work=$(mktemp -d); mkdir -p "$dep_work/bin"
+cat > "$dep_work/bin/pkg" <<EOS
+#!/bin/sh
+echo "pkg \$*" >> "$dep_work/pkg.log"
+exit 0
+EOS
+chmod +x "$dep_work/bin/pkg"
+PATH="$dep_work/bin:$PATH" deps_install proot proot-distro >/dev/null 2>&1
+if [ -f "$dep_work/pkg.log" ] && grep -q '^pkg install -y proot proot-distro$' "$dep_work/pkg.log"; then
+    t_ok "deps_install 调用了 pkg install -y <包名>"
+else
+    t_fail "deps_install 未正确调用 pkg" "$(cat "$dep_work/pkg.log" 2>/dev/null || echo 无日志)"
+fi
+
+rm -rf "$dep_work"
+
 t_suite "with_rollback（失败回滚 / 成功不回滚）"
 wr_flag="$work/wr-flag"
 wr_rb() { rm -rf "$1"; touch "$wr_flag"; }
