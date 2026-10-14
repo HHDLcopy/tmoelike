@@ -381,41 +381,9 @@ _boot_missing_parsers() {
     printf '%s\n' "${miss[@]}"
 }
 
-# 交互确认：TUI 已在则用 dialog，否则读 tty，最后才退回默认值
-_boot_ask_install() {
-    local msg="$1" def_yes="${2:-1}"
-    [ "${TMOE_ASSUME_YES:-0}" = "1" ] && return 0
-
-    # dialog 分支：必须是「能写」的终端才算可用。
-    # 注意 [ -r /dev/tty ] 在无控制终端时也可能为真，会导致 dialog 失败后误判，
-    # 所以这里用 -w 并兜底（dialog 失败不直接返回否定，而是继续尝试其他方式）。
-    # 用 -t 判定"是否有终端"：/dev/tty 在无控制终端时可能"存在但打不开"，
-    # 只用 [ -w /dev/tty ] 会误判并让 dialog 报错。
-    if command -v dialog >/dev/null 2>&1 && { [ -t 0 ] || [ -t 1 ]; }; then
-        if dialog --title "缺少依赖" --yesno "$msg" 12 72 </dev/tty >/dev/tty 2>&1; then
-            return 0
-        fi
-    fi
-
-    # 纯文本提示：先解析成可读多行（dialog 用 \n，终端用真换行）
-    printf '%b\n' "$msg" >&2
-    local ans=""
-    if [ -t 0 ] || [ "${TMOE_ASSUME_INTERACTIVE:-0}" = "1" ]; then
-        printf '继续安装？[Y/n] ' >&2
-        read -r ans || ans=""
-        case "$ans" in
-            ""|y|Y|yes|YES) return 0 ;;
-            *) return 1 ;;
-        esac
-    fi
-    # 完全非交互（管道/CI）：用调用方给的默认值
-    [ "$def_yes" = "1" ]
-}
-
 _boot_ensure_parser() {
-    # 语义：jq 是首选（启动更快、依赖更小）。只要缺 jq 就询问，
-    # 哪怕 python3 可用——让用户自己决定是否装 jq；
-    # 两者都没有时才必须询问（否则完全无法解析清单）。
+    # 语义：jq 是首选（启动更快、依赖更小）。缺 jq 时若有 python3 则继续
+    # （可用但稍慢），两者都没有就必须先装上，否则连清单都解析不了。
     if ! _boot_jq_usable; then
         if _boot_python_usable; then
             _boot_info "提示：未安装 jq，将改用 python3 解析清单（可用但稍慢）。"

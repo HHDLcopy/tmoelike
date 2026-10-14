@@ -15,7 +15,7 @@ W=$(mktemp -d)
 trap 'rm -rf "$W"' EXIT
 
 t_suite "管理器：POSIX locale 下切到 UTF-8"
-out=$( LC_ALL=POSIX; LANG=; export LC_ALL LANG
+out=$( LC_ALL=POSIX; LANG=''; export LC_ALL LANG
        ensure_utf8_locale
        printf '%s' "$LC_ALL" )
 case "$out" in
@@ -45,7 +45,7 @@ PROBE
 } > "$W/fn.sh"
 
 if command -v dash >/dev/null 2>&1; then
-    out=$( LC_ALL=POSIX LANG= dash "$W/fn.sh" 2>&1 )
+    out=$( LC_ALL=POSIX LANG='' dash "$W/fn.sh" 2>&1 )
     case "$out" in
         *UTF-8*|*utf8*) t_ok "dash 下 LC_ALL 已切到 UTF-8（$out）" ;;
         *)              t_fail "dash 下 LC_ALL 已切到 UTF-8" "*UTF-8*" "$out" ;;
