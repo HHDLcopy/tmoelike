@@ -7,19 +7,6 @@
 # ============================================================
 #  proot 容器：安装 / 启动 / 删除
 # ============================================================
-# 发行版是否可用：proot-distro 刚安装时发行版列表为空，
-# 需要先执行 `proot-distro update` 拉取列表，否则所有发行版都会被误判为"不支持"。
-# 返回 0=可用；1=update 后仍不可用
-distro_available() {
-    local distro="$1"
-    proot-distro list 2>/dev/null | grep -qw "$distro" && return 0
-
-    warn "发行版列表为空或不含 ${distro}，正在执行 proot-distro update 获取列表…"
-    if proot-distro update >/dev/null 2>&1; then
-        proot-distro list 2>/dev/null | grep -qw "$distro" && return 0
-    fi
-    return 1
-}
 
 # ============================================================
 #  容器安装核心（CLI 与 TUI 共用，行为一致）
@@ -41,18 +28,21 @@ container_install() {
     if ! command -v proot-distro >/dev/null 2>&1; then
         die "缺少 proot-distro（pkg install proot-distro）"
     fi
-    if ! distro_available "$distro"; then
-        warn "proot-distro 无法提供 ${distro}（已尝试 proot-distro update）"
-        return 1
-    fi
+    # 不做"发行版是否受支持"的预检查：`proot-distro list` 只显示**已安装**的
+    # 容器，用它判断会把所有未安装的发行版误判为"不支持"。
+    # 直接交给 proot-distro install，由它自己报告未知发行版。
 
     local rootfs; rootfs=$(container_rootfs_path "$distro")
     local need_install=yes
     [ -d "$rootfs" ] && need_install=no
 
     if [ "$need_install" = "yes" ]; then
-        run_with_logbox "安装 ${distro}" "${LOG_DIR}/install-${distro}.log" \
-            proot-distro install "$distro" || return 1
+        if ! run_with_logbox "安装 ${distro}" "${LOG_DIR}/install-${distro}.log" \
+                proot-distro install "$distro"; then
+            warn "安装失败：${distro}（原因见 ${LOG_DIR}/install-${distro}.log）"
+            warn "若提示未知发行版，说明该名称不在当前 proot-distro 支持范围内。"
+            return 1
+        fi
     else
         log "容器已存在，跳过安装：$distro"
     fi
@@ -130,11 +120,6 @@ install_proot_distro() {
         void      "Void Linux" \
         opensuse  "openSUSE") || return
     [ -z "$d" ] && return
-
-    if ! distro_available "$d"; then
-        tui_msg "不支持" "proot-distro 无法提供 ${d}。\n\n已尝试自动执行 proot-distro update；\n仍不可用时可手动运行：\nproot-distro update"
-        return
-    fi
 
     # 与 CLI install 同一核心：安装 + 注册 + 部署助手
     if ! container_install "$d"; then

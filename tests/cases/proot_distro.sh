@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # ⚠️ AI 生成代码（AI-Generated）—— 测试同样由 AI 编写，用于自我验证。
-# 用例：proot-distro 发行版可用性判定
+# 用例：容器枚举与发行版安装
 #
-# 背景：proot-distro 刚安装时发行版列表为空（需先 `proot-distro update`），
-#       旧实现直接 grep list，导致所有发行版都被判成"不支持"。
-# 现在 distro_available 会在列表为空时自动执行 update 后重试。
+# 关键认知：`proot-distro list` 只反映**已安装**状态，不能用它判断
+# "proot-distro 支持哪些发行版"，否则所有未安装的发行版都会被误判为不支持。
+#   - 枚举已安装容器：扫 rootfs 目录（容器本质就是目录）
+#   - 安装发行版：直接 proot-distro install，不做"支持与否"的预检查
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)/lib_helpers.sh"
 
 export TMOE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
@@ -13,49 +14,44 @@ export TMOE_LIB="${TMOE_ROOT}/lib"
 source "${TMOE_ROOT}/tests/loader.sh"
 set +e
 
-FAKE=$(mktemp -d)
-MARK="$FAKE/updated"
-# 假 proot-distro：update 之前 list 为空；update 之后列出 ubuntu/alpine
-cat > "$FAKE/proot-distro" <<EOS
-#!/bin/sh
-case "\$1" in
-  list)
-    [ -f "$MARK" ] && { echo "  ubuntu"; echo "  alpine"; echo "  debian"; }
-    ;;
-  update) touch "$MARK" ;;
-esac
-exit 0
-EOS
-chmod +x "$FAKE/proot-distro"
-cleanup() { rm -rf "$FAKE"; }
-trap cleanup EXIT
+t_suite "静态检查：不再用 proot-distro list 判断发行版支持"
+# 只看代码行（注释里会提到该命令用于说明为什么不用它）
+n=$(grep -v '^[[:space:]]*#' "$TMOE_LIB/proot.sh" | grep -cF 'proot-distro list' || true)
+t_eq "proot.sh 代码中无 list 相关判断" "0" "$n"
+n2=$(grep -c 'distro_available' "$TMOE_LIB/proot.sh" 2>/dev/null || true)
+t_eq "distro_available 已移除" "0" "$n2"
 
-t_suite "distro_available：列表为空时自动 proot-distro update"
-rm -f "$MARK"
-pre=$(PATH="$FAKE:$PATH" proot-distro list)
-t_eq "update 前列表为空" "" "$pre"
-PATH="$FAKE:$PATH" distro_available ubuntu >/dev/null 2>&1; rc=$?
-t_eq "自动 update 后判定可用" "0" "$rc"
-t_eq "确实写入了 update 标记" "1" "$([ -f "$MARK" ] && echo 1 || echo 0)"
+t_suite "枚举已安装容器：扫 rootfs 目录（不依赖 proot-distro 输出）"
+W=$(mktemp -d)
+export TMOE_ROOTFS_DIR="$W/installed-rootfs"
+mkdir -p "$TMOE_ROOTFS_DIR/ubuntu" "$TMOE_ROOTFS_DIR/alpine" "$TMOE_ROOTFS_DIR/debian"
+# 这些目录没有真实的 proot-distro 元数据，仍应被列出
+out=$(list_proot_installed | sort | tr '\n' ' ')
+t_eq "列出全部容器目录" "alpine debian ubuntu " "$out"
 
-t_suite "distro_available：不存在/未支持的发行版"
-PATH="$FAKE:$PATH" distro_available nosuchdistro >/dev/null 2>&1; rc=$?
-t_eq "正确判定不可用（非 0）" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
+mkdir -p "$TMOE_ROOTFS_DIR/fedora"
+out=$(list_proot_installed | sort | tr '\n' ' ')
+t_eq "新增目录后同步出现" "alpine debian fedora ubuntu " "$out"
 
-t_suite "回归：两个调用方都改用 distro_available（不再各自裸 grep）"
-# 注意 distro_available 内部本来就要 grep list，这里检查的是调用方。
-for fn in install_proot_distro container_install; do
-    body=$(awk "/^${fn}\(\)/,/^}/" "$TMOE_LIB/proot.sh")
-    if printf '%s' "$body" | grep -qF 'distro_available'; then
-        t_ok "${fn} 使用了 distro_available"
-    else
-        t_fail "${fn} 未使用 distro_available（仍可能把空列表误判为不支持）"
-    fi
-    if printf '%s' "$body" | grep -qF 'proot-distro list'; then
-        t_fail "${fn} 仍直接调用 proot-distro list"
-    else
-        t_ok "${fn} 不再直接调用 proot-distro list"
-    fi
-done
+t_suite "空 rootfs：不应报错"
+rm -rf "$TMOE_ROOTFS_DIR"; mkdir -p "$TMOE_ROOTFS_DIR"
+out=$(list_proot_installed 2>&1); rc=$?
+t_eq "返回 0（无容器）" "0" "$rc"
+t_eq "输出为空" "" "$(printf '%s' "$out" | tr -d '[:space:]')"
 
+t_suite "安装路径：不做预检查（静态确认调用链）"
+body=$(awk '/^container_install\(\)/,/^}/' "$TMOE_LIB/proot.sh")
+if printf '%s' "$body" | grep -qF 'proot-distro install'; then
+    t_ok "container_install 直接调用 proot-distro install"
+else
+    t_fail "container_install 未直接调用 proot-distro install"
+fi
+# 同样排除注释行
+if printf '%s' "$body" | grep -v '^[[:space:]]*#' | grep -qF 'proot-distro list'; then
+    t_fail "container_install 仍用 list 做预检查"
+else
+    t_ok "container_install 不再用 list 预检查"
+fi
+
+rm -rf "$W"
 t_report

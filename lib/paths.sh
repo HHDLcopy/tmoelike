@@ -40,28 +40,25 @@ container_rootfs_path() {
 #  容器列表：三种方式回退（修复 #2：解析脆弱）
 # ============================================================
 list_proot_installed() {
+    # 首选：扫描 rootfs 目录。
+    # 不用 `proot-distro list`：它只反映已安装状态、输出格式还随版本变化，
+    # 解析它既不可靠、也容易被误用成"支持哪些发行版"的判据。
+    local rootfs; rootfs=$(proot_rootfs_dir)
     local out=""
+    if [ -d "$rootfs" ]; then
+        out=$(find_dirs "$rootfs")
+        [ -n "$out" ] && { printf '%s\n' "$out"; return 0; }
+    fi
 
-    # 方式 1：新版 proot-distro 的 list --installed 子命令
+    # 兜底：官方 --installed 子命令（语义明确：只列已安装）
     if proot-distro list --installed >/dev/null 2>&1; then
         out=$(proot-distro list --installed 2>/dev/null | awk '
             /^\[installed\]/ {f=1; next}
             /^\[/ {f=0}
             f && /^[a-z0-9]/ {print $1}
         ')
-        [ -n "$out" ] && { printf '%s\n' "$out"; return 0; }
+        [ -n "$out" ] && printf '%s\n' "$out"
     fi
-
-    # 方式 2：扫描 rootfs 目录（动态路径）
-    local rootfs; rootfs=$(proot_rootfs_dir)
-    if [ -d "$rootfs" ]; then
-        out=$(find_dirs "$rootfs")
-        [ -n "$out" ] && { printf '%s\n' "$out"; return 0; }
-    fi
-
-    # 方式 3：最老版本 proot-distro 无 --installed，退回 list 解析
-    out=$(proot-distro list 2>/dev/null | awk '/installed/ && /^[a-z0-9]/ {print $1}')
-    [ -n "$out" ] && printf '%s\n' "$out"
     return 0
 }
 list_chroot_installed() {
