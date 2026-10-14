@@ -130,4 +130,14 @@ out=$(run_entry TMOE_SOURCES="only|$SRC_URL" -- --refresh-lib --help); rc=$?
 t_eq "退出码 0" "0" "$rc"
 t_contains "重新探测源" "已选源" "$out"
 
+
+t_suite "入口顺序：解析器检查必须在下载之前"
+# 回归：曾把 _boot_ensure_parser 放在 _boot_install_lib 之后，
+# 导致首次运行（无缓存、无 jq/python3）在解析清单时就失败，
+# 根本走不到"自动安装依赖"。
+ensure_line=$(grep -n '^_boot_ensure_parser$' "$TMOE_ROOT/tmoelike.sh" | head -1 | cut -d: -f1)
+install_line=$(grep -n '_boot_install_lib "\$TMOE_CACHE_LIB"' "$TMOE_ROOT/tmoelike.sh" | head -1 | cut -d: -f1)
+t_eq "两处调用都能定位" "1" "$([ -n "$ensure_line" ] && [ -n "$install_line" ] && echo 1 || echo 0)"
+t_eq "解析器检查早于模块下载" "1" "$([ "${ensure_line:-0}" -lt "${install_line:-0}" ] && echo 1 || echo 0)"
+
 t_report

@@ -455,6 +455,12 @@ _boot_ensure_parser() {
 （或设置 TMOE_LIB=<本地模块目录> 离线运行）"
 }
 
+# ---------- 解析器就绪（必须在下载之前！） ----------
+# 下载模块的第一步就是取回并解析 lib/manifest.json，而解析需要 jq 或 python3。
+# 若把它放在 _boot_install_lib 之后，首次运行（无缓存且无 jq/python3）会在
+# 解析清单时报 "清单解析失败（需要 jq 或 python3）"，根本走不到自动安装。
+_boot_ensure_parser
+
 # ---------- 决定模块目录：显式 > 同目录 lib/ > 缓存 ----------
 if [ -z "${TMOE_LIB:-}" ]; then
     if [ -n "$_tmo_self" ] && [ -f "$_tmo_self" ] && \
@@ -471,9 +477,6 @@ fi
 export TMOE_LIB
 
 # ---------- 加载模块 ----------
-# 解析器缺失时先询问安装（无论走本地 lib 还是联网下载都需要它）
-_boot_ensure_parser
-
 for _m in "${TMOE_MODULES[@]}"; do
     if [ ! -f "${TMOE_LIB}/${_m}.sh" ]; then
         _boot_die "缺少模块：${TMOE_LIB}/${_m}.sh
