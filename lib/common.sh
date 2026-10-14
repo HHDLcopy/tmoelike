@@ -42,6 +42,31 @@ readonly MAIN_LOG="${LOG_DIR}/main.log"
 # 备份保留份数（每个容器）
 readonly BACKUP_KEEP="${BACKUP_KEEP:-5}"
 
+# ---------- UTF-8 locale ----------
+# ncurses 只有在 UTF-8 locale 下才会按多字节宽度绘制文字。
+# Termux 默认不设 LANG，proot 容器默认 LANG 为空且 LC_CTYPE=POSIX，
+# 于是 dialog 里所有中文都会变成乱码 —— 终端本身完全没问题。
+# 这里在建立 TUI 之前尽量切到 UTF-8；切不了就保持原样（不会更糟）。
+ensure_utf8_locale() {
+    case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+        *UTF-8*|*utf8*|*UTF8*) return 0 ;;
+    esac
+    local cand
+    # 有 locale 命令就先挑一个系统里真实存在的（glibc 容器里常见 C.utf8）
+    if command -v locale >/dev/null 2>&1; then
+        for cand in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
+            if locale -a 2>/dev/null | grep -qx "$cand"; then
+                export LC_ALL="$cand" LANG="$cand"
+                return 0
+            fi
+        done
+    fi
+    # 没有 locale 命令（Termux/bionic）或列表里没有可用项：
+    # bionic 与 glibc ≥2.35 都内置 C.UTF-8，直接用它。
+    export LC_ALL=C.UTF-8 LANG=C.UTF-8
+    return 0
+}
+
 for d in "$PLUGIN_DIR" "$CONFIG_DIR" "$LOG_DIR" "$CACHE_DIR" "$BACKUP_DIR"; do
     mkdir -p "$d"
 done

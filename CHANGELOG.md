@@ -11,8 +11,18 @@
    "文件不存在"时部署，于是已装容器会永远保留旧助手（升级也无效）。
    现在按**内容比对**判断：助手缺失、或与当前模板不一致，就重新部署；
    `run_container_helper()` 走同一判据。`HELPER_VERSION` → 4。
+3. **对话框里中文全是乱码**：ncurses 只在 UTF-8 locale 下按多字节宽度绘制文字，
+   而 Termux 默认不设 `LANG`、proot 容器 `LC_CTYPE=POSIX`，于是 `dialog` 里所有
+   中文都被画坏（终端本身没问题：同一终端下 ZeroTermux 的欢迎横幅中文正常）。
+   实测容器内 `LANG` 为空时输出中找不到 `容器`，加上 `C.UTF-8` 后即可找到。
+   新增 `ensure_utf8_locale()`：优先在 `locale -a` 里挑真实存在的 UTF-8 locale
+   （glibc 容器常见 `C.utf8`），没有 `locale` 命令（Termux/bionic）时直接用内置的
+   `C.UTF-8`；已在 UTF-8 下则不覆盖用户设置。管理器的 `detect_tui()` 与容器助手的
+   `ensure_tui()` 都必须在拉起 dialog 之前调用。
 
 ### 测试
+- 新增 `tests/cases/locale.sh`：管理器与助手两侧的 locale 切换行为
+  （含 dash 下的真实执行）、"已是 UTF-8 不覆盖"、以及"切换早于选 dialog"的顺序断言。
 - 新增 `tests/cases/helper_posix.sh`：自动抽取 `lib/*.sh` 中所有声明 `#!/bin/sh`
   的 heredoc 助手脚本，断言无 `${@:N}` / `${*:N}` 切片、经 `dash -n`
   （无 dash 时回落 `busybox ash -n`）解析通过、且调用了 `main_menu`。

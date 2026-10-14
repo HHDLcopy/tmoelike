@@ -5,6 +5,8 @@
 #  本文件由入口 tmoelike.sh 通过 source 加载，不单独执行。
 # ------------------------------------------------------------
 detect_tui() {
+    # 必须赶在 dialog 起来之前：否则中文全画成乱码（说明见 common.sh）
+    ensure_utf8_locale
     if   command -v dialog   >/dev/null 2>&1; then TUI=dialog
     elif command -v whiptail >/dev/null 2>&1; then TUI=whiptail
     else

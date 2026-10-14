@@ -94,7 +94,28 @@ map_pkgs() {
 }
 
 # ---------- 确保 TUI 可用（含 bash 依赖处理） ----------
+# ncurses 只有在 UTF-8 locale 下才会按多字节宽度绘制文字。
+# proot 容器默认 LANG 为空、LC_CTYPE=POSIX，于是对话框里所有中文都变成乱码
+# （终端本身没问题：同一终端下 Termux 的中文显示正常）。
+ensure_utf8_locale() {
+    case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+        *UTF-8*|*utf8*|*UTF8*) return 0 ;;
+    esac
+    if command -v locale >/dev/null 2>&1; then
+        for cand in C.UTF-8 C.utf8 en_US.UTF-8 en_US.utf8; do
+            if locale -a 2>/dev/null | grep -qx "$cand"; then
+                LC_ALL="$cand"; LANG="$cand"; export LC_ALL LANG
+                return 0
+            fi
+        done
+    fi
+    # locale -a 不可用时兜底：C.UTF-8 在 glibc ≥2.35 与 musl ≥1.2 上均可用；
+    # 若真的不存在，glibc/musl 会安静回落到 C，与不设置等价，不会更糟。
+    LC_ALL=C.UTF-8; LANG=C.UTF-8; export LC_ALL LANG
+    return 0
+}
 ensure_tui() {
+    ensure_utf8_locale
     if ! command -v dialog >/dev/null 2>&1 && ! command -v whiptail >/dev/null 2>&1; then
         echo "正在安装 dialog…"
         pm_install dialog >/dev/null 2>&1 || pm_install whiptail >/dev/null 2>&1 || true
