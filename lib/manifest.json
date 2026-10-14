@@ -1,0 +1,121 @@
+{
+  "format": 1,
+  "generated_by": "tools/gen_manifest.py",
+  "generated_at": "2026-10-14",
+  "modules": [
+    {
+      "name": "common",
+      "file": "common.sh",
+      "sha256": "eaea0a992d4c63344ff5aadc961bcc140032a79331bba00b80133604bcfedc35",
+      "size": 6028
+    },
+    {
+      "name": "tui",
+      "file": "tui.sh",
+      "sha256": "566a03828306a9a7cd3ee1c02bd2680223b5b6cea96ff340e9daeb2ac173603f",
+      "size": 6063
+    },
+    {
+      "name": "archive",
+      "file": "archive.sh",
+      "sha256": "92f61bb80ac8e61bbc5e61f169ab4b0c59b941252f8faa075c186deb7a4bb59a",
+      "size": 5059
+    },
+    {
+      "name": "deps",
+      "file": "deps.sh",
+      "sha256": "3cb326c9b15377db2f609e4e4f21d45d0efa49dfc8c19741655e31187c4ebdf2",
+      "size": 2827
+    },
+    {
+      "name": "paths",
+      "file": "paths.sh",
+      "sha256": "047d6446f8ca2d368951b53bac733936b5b4613a243c79a5d6899a30486fd8ad",
+      "size": 6025
+    },
+    {
+      "name": "registry",
+      "file": "registry.sh",
+      "sha256": "87901f2a1b875370b3c6e28b5292905e83cbd2bae89553cfc0db16edd9ea3467",
+      "size": 1309
+    },
+    {
+      "name": "download",
+      "file": "download.sh",
+      "sha256": "3a2758f3fed5a30ef6e4576ee16cce370e034b80da3f7aa6a36cd355a68dae42",
+      "size": 4826
+    },
+    {
+      "name": "proot",
+      "file": "proot.sh",
+      "sha256": "dae9b3f9fa26558ad3801b5788eebf274f29f38a473388fb9f72d2f076e4f467",
+      "size": 15031
+    },
+    {
+      "name": "helper",
+      "file": "helper.sh",
+      "sha256": "49ea3eb55bbc9ef3db60499132b2b84f0b49dd26d43bd44250bf99f9809436e1",
+      "size": 18732
+    },
+    {
+      "name": "chroot",
+      "file": "chroot.sh",
+      "sha256": "979c1d1c52010f0ec9fa8538e9f20f96311937cb18e0ce8a074abcc5f0bc784b",
+      "size": 9097
+    },
+    {
+      "name": "desktop",
+      "file": "desktop.sh",
+      "sha256": "fdc6c5a29039016f6410ba886c341a5ee1b58ecd3a5c0c550d556a86fb44a82f",
+      "size": 7317
+    },
+    {
+      "name": "ssh",
+      "file": "ssh.sh",
+      "sha256": "b8566d035aaf7511a0fa470c73fc2e7fa14b0aaeb2626ff53eb4310b112639f8",
+      "size": 3923
+    },
+    {
+      "name": "vnc",
+      "file": "vnc.sh",
+      "sha256": "256b75473d422875c7fb36b41b167834f06931a782e69d6b3d51896d6fbd4015",
+      "size": 4475
+    },
+    {
+      "name": "beautify",
+      "file": "beautify.sh",
+      "sha256": "43619591d3c8d492d2994d50d303634ff023fe8198459cc7b8742422ec132ea0",
+      "size": 2103
+    },
+    {
+      "name": "plugin",
+      "file": "plugin.sh",
+      "sha256": "54203cb0aed0cdd1e55cb4a73aaee5efe97b1aa27589ad64edd3eca53f43616e",
+      "size": 3484
+    },
+    {
+      "name": "update",
+      "file": "update.sh",
+      "sha256": "b67b0c1c444852035ae0123744ba787a44e7e7d077b420ba3ec3d02b00cc4b3a",
+      "size": 4369
+    },
+    {
+      "name": "backup_util",
+      "file": "backup_util.sh",
+      "sha256": "cc095031492e287a4772c80851972286ca75788010d965bac64acb2462b6df1e",
+      "size": 2285
+    },
+    {
+      "name": "menu",
+      "file": "menu.sh",
+      "sha256": "3deaee00034411e66eea3e4e5964ae88f57d707c984cb056ce8effceccf7129f",
+      "size": 2673
+    },
+    {
+      "name": "cli",
+      "file": "cli.sh",
+      "sha256": "83df9f9501c590ba78cfd6d1c3d0526df5de95ffb8f368ab5f06da7a24d95583",
+      "size": 8915
+    }
+  ]
+}
