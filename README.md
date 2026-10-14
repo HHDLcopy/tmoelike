@@ -30,7 +30,7 @@
 # 1) 只下载这一个文件（约 13 KB）
 curl -fsSL -o tmoelike.sh \
   https://raw.githubusercontent.com/HHDLcopy/tmoelike/main/tmoelike.sh
-# 国内可用 Gitee（仓库若为公开）：
+# 国内推荐走 Gitee（镜像同步，测速会优先选它）：
 # curl -fsSL -o tmoelike.sh https://gitee.com/dragon470/tmoelike/raw/main/tmoelike.sh
 
 # 2) 直接运行
@@ -38,6 +38,9 @@ bash tmoelike.sh            # 进入 TUI
 bash tmoelike.sh list       # 列出容器
 bash tmoelike.sh status
 ```
+
+两个源（GitHub / Gitee）内容一致，脚本会并行测速后选择较快的那个；
+Gitee 侧为镜像，若你发现两边版本不同步，以 GitHub `main` 为准。
 
 首次运行会自动：
 
