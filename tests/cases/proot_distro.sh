@@ -15,9 +15,12 @@ source "${TMOE_ROOT}/tests/loader.sh"
 set +e
 
 t_suite "静态检查：不再用 proot-distro list 判断发行版支持"
-# 只看代码行（注释里会提到该命令用于说明为什么不用它）
-n=$(grep -v '^[[:space:]]*#' "$TMOE_LIB/proot.sh" | grep -cF 'proot-distro list' || true)
-t_eq "proot.sh 代码中无 list 相关判断" "0" "$n"
+# 只检查"用 list 做支持性判断"这一模式。
+# （注释说明、以及给用户的提示文本里出现该命令名，都是合理的）
+n=$(grep -cF 'proot-distro list 2>/dev/null | grep' "$TMOE_LIB/proot.sh" || true)
+t_eq "无 list+grep 的支持性判断" "0" "$n"
+n3=$(grep -cF 'grep -qw "$distro"' "$TMOE_LIB/proot.sh" || true)
+t_eq "无针对发行版的 list 匹配" "0" "$n3"
 n2=$(grep -c 'distro_available' "$TMOE_LIB/proot.sh" 2>/dev/null || true)
 t_eq "distro_available 已移除" "0" "$n2"
 

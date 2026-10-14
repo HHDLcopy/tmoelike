@@ -30,8 +30,8 @@
     {
       "name": "paths",
       "file": "paths.sh",
-      "sha256": "fc26b0f9f3ec1dd932337852991a20bec69b07a65b1f5ce7fb77acd8efbe92e4",
-      "size": 5980
+      "sha256": "44240cae40f362149f63c49e560ecd50c2d143044fdd9c2d183fb41d80fcf9b1",
+      "size": 8543
     },
     {
       "name": "registry",
@@ -48,8 +48,8 @@
     {
       "name": "proot",
       "file": "proot.sh",
-      "sha256": "78fa163ece8a404149e0b87a32916f30a805a058a7db45944470536b31b5f3fc",
-      "size": 15180
+      "sha256": "3caa282ec2df0f23581c98ef6e38837cf3f44b8666f9490e9bc69c87eaebf447",
+      "size": 15620
     },
     {
       "name": "helper",

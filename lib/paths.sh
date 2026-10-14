@@ -20,16 +20,55 @@ proot_rootfs_dir() {
         return 0
     fi
     local prefix="${PREFIX:-/data/data/com.termux/files/usr}"
+    # 候选按"常见程度"排列；不同 proot-distro 版本/安装方式会用不同位置
     local candidates=(
         "${prefix}/var/lib/proot-distro/installed-rootfs"
         "${prefix}/var/lib/proot-distro/rootfs"
+        "${prefix}/var/lib/proot-distro"
+        "/data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs"
         "${HOME}/.proot-distro/installed-rootfs"
+        "${HOME}/.local/share/proot-distro/installed-rootfs"
     )
+    local d
+    # 优先返回"确实装了容器"的目录（而不是仅仅存在）
+    for d in "${candidates[@]}"; do
+        [ -d "$d" ] || continue
+        if [ -n "$(find_dirs "$d" 2>/dev/null | head -n1)" ]; then
+            echo "$d"
+            return 0
+        fi
+    done
+    # 其次返回存在的目录（用于创建新容器）
     for d in "${candidates[@]}"; do
         [ -d "$d" ] && { echo "$d"; return 0; }
     done
-    # 找不到就返回第一个（创建时使用）
-    echo "${prefix}/var/lib/proot-distro/installed-rootfs"
+    # 都没有：返回最常见的默认位置
+    echo "${candidates[0]}"
+}
+
+# 简短诊断：用于 TUI 提示（msgbox 放不下太多行）
+proot_diag_short() {
+    local rootfs; rootfs=$(proot_rootfs_dir)
+    printf 'rootfs：%s\n（%s）' "$rootfs" "$([ -d "$rootfs" ] && echo 存在 || echo 不存在)"
+}
+
+# 诊断信息：找不到容器时输出，帮助定位实际安装位置/命令行为
+proot_diag() {
+    local rootfs; rootfs=$(proot_rootfs_dir)
+    local out=""
+    out+="rootfs 目录：${rootfs}\n"
+    out+="  ├ 存在：$([ -d "$rootfs" ] && echo 是 || echo 否)\n"
+    if [ -d "$rootfs" ]; then
+        out+="  └ 内容：$(find_dirs "$rootfs" 2>/dev/null | tr '\n' ' ')\n"
+    fi
+    out+="\nPREFIX=${PREFIX:-<未设置>}\n"
+    local inst
+    inst=$(proot-distro list --installed 2>&1 | head -n 8)
+    out+="\nproot-distro list --installed：\n${inst:-<无输出>}\n"
+    local all
+    all=$(proot-distro list 2>&1 | head -n 8)
+    out+="\nproot-distro list：\n${all:-<无输出>}"
+    printf '%s' "$out"
 }
 container_rootfs_path() {
     local name="$1"
@@ -40,25 +79,50 @@ container_rootfs_path() {
 #  容器列表：三种方式回退（修复 #2：解析脆弱）
 # ============================================================
 list_proot_installed() {
-    # 首选：扫描 rootfs 目录。
-    # 不用 `proot-distro list`：它只反映已安装状态、输出格式还随版本变化，
-    # 解析它既不可靠、也容易被误用成"支持哪些发行版"的判据。
-    local rootfs; rootfs=$(proot_rootfs_dir)
-    local out=""
-    if [ -d "$rootfs" ]; then
-        out=$(find_dirs "$rootfs")
-        [ -n "$out" ] && { printf '%s\n' "$out"; return 0; }
+    local out="" names="" rootfs
+    rootfs=$(proot_rootfs_dir)
+
+    # TMOE_ROOTFS_DIR 是显式覆盖（测试隔离 / 自定义安装位置）：直接以它为准
+    if [ -n "${TMOE_ROOTFS_DIR:-}" ]; then
+        find_dirs "$rootfs"
+        return 0
     fi
 
-    # 兜底：官方 --installed 子命令（语义明确：只列已安装）
-    if proot-distro list --installed >/dev/null 2>&1; then
-        out=$(proot-distro list --installed 2>/dev/null | awk '
-            /^\[installed\]/ {f=1; next}
-            /^\[/ {f=0}
-            f && /^[a-z0-9]/ {print $1}
-        ')
-        [ -n "$out" ] && printf '%s\n' "$out"
+    # 方式 1：官方 --installed —— proot-distro 自己报告"已安装了哪些容器"，
+    # 不依赖我们对安装路径的猜测，优先级最高。
+    # 用途说明：枚举"已安装的容器"正是它的本职；但**不能**用它判断
+    # "支持哪些发行版"（那是发行版清单，不是已安装状态）。
+    if out=$(proot-distro list --installed 2>/dev/null) && [ -n "$out" ]; then
+        names=$(printf '%s\n' "$out" | sed -n '/\[installed\]/,$p' \
+            | awk '/^[[:space:]]*[a-z0-9]/ && $1 !~ /^\[/ {print $1}')
+        [ -z "$names" ] && names=$(printf '%s\n' "$out" \
+            | awk '/^[[:space:]]*[a-z0-9]/ && $1 !~ /^\[/ {print $1}')
+        if [ -n "$names" ]; then
+            printf '%s\n' "$names"
+            return 0
+        fi
     fi
+
+    # 方式 2：扫 rootfs 目录（不依赖任何命令输出格式）
+    if [ -d "$rootfs" ]; then
+        names=$(find_dirs "$rootfs")
+        if [ -n "$names" ]; then
+            printf '%s\n' "$names"
+            return 0
+        fi
+    fi
+
+    # 方式 3：很老的版本没有 --installed，list 输出里带 installed 标记
+    if out=$(proot-distro list 2>/dev/null) && [ -n "$out" ]; then
+        names=$(printf '%s\n' "$out" \
+            | awk 'tolower($0) ~ /installed/ && $1 ~ /^[a-z0-9]/ {print $1}')
+        if [ -n "$names" ]; then
+            printf '%s\n' "$names"
+            return 0
+        fi
+    fi
+
+    log "list_proot_installed: 未发现容器（rootfs=${rootfs} 存在=$([ -d "$rootfs" ] && echo yes || echo no)）"
     return 0
 }
 list_chroot_installed() {

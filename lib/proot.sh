@@ -131,7 +131,7 @@ install_proot_distro() {
 
 start_proot_container() {
     local cs; cs=$(list_proot_installed)
-    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
+    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。\n\n$(proot_diag_short)\n\n若确实装过，请运行：\nproot-distro list --installed"; return; }
     local c
     local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
     c=$(tui_menu "启动" "选择容器：" ${names[@]+"${names[@]}"}) || return
@@ -149,7 +149,7 @@ start_proot_container() {
 
 remove_proot_container() {
     local cs; cs=$(list_proot_installed)
-    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
+    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。\n\n$(proot_diag_short)\n\n若确实装过，请运行：\nproot-distro list --installed"; return; }
     local c
     local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
     c=$(tui_menu "删除" "选择容器：" ${names[@]+"${names[@]}"}) || return
@@ -168,7 +168,7 @@ remove_proot_container() {
 # ============================================================
 export_container() {
     local cs; cs=$(list_proot_installed)
-    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
+    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。\n\n$(proot_diag_short)\n\n若确实装过，请运行：\nproot-distro list --installed"; return; }
     local c
     local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
     c=$(tui_menu "导出" "选择容器：" ${names[@]+"${names[@]}"}) || return
@@ -227,7 +227,7 @@ import_container() {
 backup_container() {
     # 备份 = 导出 + 元数据
     local cs; cs=$(list_proot_installed)
-    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
+    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。\n\n$(proot_diag_short)\n\n若确实装过，请运行：\nproot-distro list --installed"; return; }
     local c
     local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
     c=$(tui_menu "备份" "选择容器：" ${names[@]+"${names[@]}"}) || return
@@ -297,7 +297,7 @@ restore_container() {
 }
 clone_container() {
     local cs; cs=$(list_proot_installed)
-    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。"; return; }
+    [ -z "$cs" ] && { tui_msg "提示" "暂无 proot 容器。\n\n$(proot_diag_short)\n\n若确实装过，请运行：\nproot-distro list --installed"; return; }
     local c
     local names=(); local _c; for _c in $cs; do names+=("$_c" "$_c"); done
     c=$(tui_menu "克隆" "选择源容器：" ${names[@]+"${names[@]}"}) || return
