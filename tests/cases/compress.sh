@@ -54,7 +54,8 @@ PY
     if [ -s "$work/evil.tar.zst" ]; then
         mkdir -p "$work/oute"
         zstd_extract "$work/evil.tar.zst" "$work/oute" 2>/dev/null && rc=0 || rc=$?
-        t_eq "zstd 穿越包被拒绝" "1" "$rc"
+        # tar 退出码随构建为 1 或 2，safe_untar 已归一；这里只要求「非 0」
+        t_eq "zstd 穿越包被拒绝（非 0）" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
         t_eq "未逃逸" "no" "$([ -e "$work/zst-escape" ] && echo yes || echo no)"
     else
         t_ok "跳过 zstd 穿越包（本环境无法生成 zstd 夹具）"

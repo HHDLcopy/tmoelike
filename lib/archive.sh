@@ -54,11 +54,19 @@ safe_untar() {
     fi
 
     mkdir -p "$dest"
+    local xrc=0
     if [ ${#dec[@]} -gt 0 ]; then
-        "${dec[@]}" "$archive" | tar -xf - -C "$dest" --no-same-owner --no-same-permissions
+        "${dec[@]}" "$archive" | tar -xf - -C "$dest" --no-same-owner --no-same-permissions || xrc=$?
     else
-        tar -xf "$archive" -C "$dest" --no-same-owner --no-same-permissions
+        tar -xf "$archive" -C "$dest" --no-same-owner --no-same-permissions || xrc=$?
     fi
+    if [ "$xrc" -ne 0 ]; then
+        # 注意：GNU tar 对「成员名含 ../ 被拒」的退出码随构建不同（1 或 2），
+        # 这里统一归一为 1，让调用方只需判断「非 0 即失败」。
+        warn "解压失败（tar 退出码 ${xrc}）：$archive"
+        return 1
+    fi
+    return 0
 }
 
 # ---------- 压缩兼容层 ----------

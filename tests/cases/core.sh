@@ -44,7 +44,7 @@ with tarfile.open(sys.argv[1], mode='w') as t:
 PY
 mkdir -p "$work/out1"
 safe_untar "$work/evil.tar" "$work/out1" 2>/dev/null && rc=0 || rc=$?
-t_eq "含 ../ 的包被拒绝" "1" "$rc"
+t_eq "含 ../ 的包被拒绝（非 0）" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
 t_eq "未逃逸目标目录" "no" "$([ -e "$work/pwned-by-tar" ] && echo yes || echo no)"
 
 python3 - "$work/abs.tar" <<'PY' 2>/dev/null || true
@@ -54,7 +54,7 @@ with tarfile.open(sys.argv[1], mode='w') as t:
 PY
 mkdir -p "$work/out2"
 safe_untar "$work/abs.tar" "$work/out2" 2>/dev/null && rc=0 || rc=$?
-t_eq "绝对路径包被拒绝" "1" "$rc"
+t_eq "绝对路径包被拒绝（非 0）" "1" "$([ "$rc" -ne 0 ] && echo 1 || echo 0)"
 
 mkdir -p "$work/out3"; (cd "$work/src" && tar -cf "$work/plain.tar" .)
 safe_untar "$work/plain.tar" "$work/out3" && rc=0 || rc=$?
