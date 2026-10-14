@@ -9,7 +9,7 @@
 : "${PREFIX:=/data/data/com.termux/files/usr}"
 
 # ---------- 常量 ----------
-readonly TMOE_VERSION="2.2.0"
+readonly TMOE_VERSION="2.3.0"
 
 # 修复：SCRIPT_DIR 在管道/软链下不可靠（BASH_SOURCE 可能为空）
 get_script_path() {

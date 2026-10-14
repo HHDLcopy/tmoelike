@@ -28,13 +28,14 @@ mkdir -p "$ROOTFS"; cleanup
 
 echo "== A. 帮助 / 状态 =="
 out=$(bash "$S" --help 2>&1); t "--help rc" "0" "$?"
-has "帮助含版本号" "TMOE-LIKE v2.2.0" "$out"
+VER=$(grep -oE 'TMOE_VERSION="[0-9.]+"' "$TMOE_ROOT/lib/common.sh" | head -1 | cut -d'"' -f2)
+has "帮助含 lib 声明的版本号" "TMOE-LIKE v$VER" "$out"
 has "帮助含 rollback 子命令" "rollback" "$out"
 has "帮助含 status 子命令" "status" "$out"
 has "帮助含 backup 子命令" "backup <name>" "$out"
 
 st=$(bash "$S" status 2>&1)
-has "status 版本" "TMOE-LIKE v2.2.0" "$st"
+has "status 版本与 lib 一致" "TMOE-LIKE v$VER" "$st"
 has "status 架构（本机实际）" "架构：$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')" "$st"
 has "status 表头" "NAME" "$st"
 
