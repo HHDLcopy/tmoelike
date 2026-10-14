@@ -75,7 +75,17 @@ proot_diag() {
 }
 container_rootfs_path() {
     local name="$1"
-    echo "$(proot_rootfs_dir)/${name}"
+    local base
+    base="$(proot_rootfs_dir)/${name}"
+    # 兼容两种布局：
+    #   旧版 installed-rootfs/<name>/      该目录本身就是 rootfs
+    #   新版 containers/<name>/rootfs/     rootfs 在下一层
+    # 判据：容器目录下若存在 rootfs/ 子目录，真正的 rootfs 是它。
+    if [ -d "${base}/rootfs" ]; then
+        printf '%s\n' "${base}/rootfs"
+    else
+        printf '%s\n' "$base"
+    fi
 }
 
 # ============================================================

@@ -30,8 +30,8 @@
     {
       "name": "paths",
       "file": "paths.sh",
-      "sha256": "949c06d7ac8f7ec74c896d7894a4511cd9877cc1ce2931b7e36d83d7aeacc50e",
-      "size": 8972
+      "sha256": "f8af9a0003b1d2d6fdcfa13f92bd82d57a1fe3098f9dc8998a233f3a68943de9",
+      "size": 9363
     },
     {
       "name": "registry",
@@ -54,8 +54,8 @@
     {
       "name": "helper",
       "file": "helper.sh",
-      "sha256": "49ea3eb55bbc9ef3db60499132b2b84f0b49dd26d43bd44250bf99f9809436e1",
-      "size": 18732
+      "sha256": "460f78e7abceb135e2612f2a8b3e1bc1ccda3211e7d782a3e47fc0cd63203b8d",
+      "size": 19201
     },
     {
       "name": "chroot",

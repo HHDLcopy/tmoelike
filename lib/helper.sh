@@ -466,12 +466,19 @@ run_container_helper() {
     local rootfs; rootfs=$(container_rootfs_path "$name")
     if [ ! -f "${rootfs}/usr/local/bin/${HELPER_NAME}" ]; then
         deploy_container_helper "$name" || {
-            tui_msg "失败" "无法部署容器助手到 $name。"
-            return 1
+            warn "容器助手部署失败（rootfs=${rootfs}），改为进入 shell。"
         }
     fi
     clear
-    proot-distro login "$name" -- "/usr/local/bin/${HELPER_NAME}"
+    # 先确认容器内助手真的可执行；不可用就退回 shell，
+    # 而不是把用户丢在 "No such file or directory" 的报错上。
+    if proot-distro login "$name" -- sh -c "test -x /usr/local/bin/${HELPER_NAME}" 2>/dev/null; then
+        proot-distro login "$name" -- "/usr/local/bin/${HELPER_NAME}"
+    else
+        warn "容器内未找到 ${HELPER_NAME}，改为进入 shell。"
+        warn "（可稍后在容器内重试，或用 容器管理 → 更新助手）"
+        proot-distro login "$name"
+    fi
 }
 
 # 更新容器内助手
