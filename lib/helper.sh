@@ -478,7 +478,9 @@ deploy_container_helper() {
     # 助手本身是 POSIX sh（见其文件头），Alpine 等没有 bash 的容器也能直接跑，
     # 因此不再需要额外的 bash 包装器。
     helper_template > "$dest" || return 1
-    chmod +x "$dest" 2>/dev/null || true
+    # 固定为 0755：截断已有文件会继承其旧权限（实测遗留过 711，
+    # 那种模式下容器内非 root 用户读不到脚本，解释器会拒绝执行）
+    chmod 0755 "$dest" 2>/dev/null || true
 
     log "部署容器助手到 $name"
     return 0
